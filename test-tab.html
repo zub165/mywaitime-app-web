@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tab Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-content { background: #f0f0f0; padding: 20px; margin: 10px 0; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Tab Loading Test</h1>
+    <button onclick="testTabLoading()">Test Tab Loading</button>
+    <div id="tab-content" class="test-content">
+        <!-- Content will be loaded here -->
+    </div>
+
+    <script>
+        async function testTabLoading() {
+            const tabName = 'er-wait';
+            console.log(`Testing tab loading for: ${tabName}`);
+            
+            try {
+                const response = await fetch(`tabs/${tabName}.html`);
+                console.log(`Response status: ${response.status}`);
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to load ${tabName} tab: ${response.status}`);
+                }
+                
+                const content = await response.text();
+                console.log(`Tab content fetched, length: ${content.length}`);
+                
+                const container = document.getElementById('tab-content');
+                container.innerHTML = content;
+                console.log('Content inserted into DOM');
+                
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('tab-content').innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - MyWaitTime</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --admin-primary: #2c3e50;
+            --admin-secondary: #3498db;
+            --admin-success: #27ae60;
+            --admin-warning: #f39c12;
+            --admin-danger: #e74c3c;
+        }
+
+        body {
+            background: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .admin-header {
+            background: var(--admin-primary);
+            color: white;
+            padding: 20px 0;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .admin-header h1 {
+            font-size: 2rem;
+            margin: 0;
+        }
+
+        .admin-sidebar {
+            background: white;
+            min-height: calc(100vh - 80px);
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .sidebar-menu li {
+            border-bottom: 1px solid #eee;
+        }
+
+        .sidebar-menu a {
+            display: block;
+            padding: 15px 20px;
+            color: var(--admin-primary);
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar-menu a:hover,
+        .sidebar-menu a.active {
+            background: var(--admin-secondary);
+            color: white;
+        }
+
+        .sidebar-menu i {
+            width: 20px;
+            margin-right: 10px;
+        }
+
+        .admin-content {
+            padding: 30px;
+        }
+
+        .dashboard-card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            border-left: 4px solid var(--admin-secondary);
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--admin-secondary);
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .table-container {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        }
+
+        .dataTables_wrapper {
+            margin-top: 20px;
+        }
+
+        .btn-admin {
+            background: var(--admin-secondary);
+            border: none;
+            border-radius: 5px;
+            padding: 8px 15px;
+            color: white;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .btn-admin:hover {
+            background: var(--admin-primary);
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        .btn-export {
+            background: var(--admin-success);
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            color: white;
+            font-weight: 600;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-export:hover {
+            background: #229954;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .export-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .user-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .modal-content {
+            border-radius: 10px;
+            border: none;
+        }
+
+        .modal-header {
+            background: var(--admin-primary);
+            color: white;
+            border-radius: 10px 10px 0 0;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .loading-spinner {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        @media (max-width: 768px) {
+            .admin-content {
+                padding: 15px;
+            }
+            
+            .stat-card {
+                margin-bottom: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3">Processing...</p>
+        </div>
+    </div>
+
+    <div class="admin-header">
+        <div class="container-fluid">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1><i class="fas fa-shield-alt"></i> Admin Panel</h1>
+                    <p class="mb-0">MyWaitTime Management System</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <span id="adminName">Loading...</span>
+                    <button class="btn btn-light ms-3" onclick="logout()">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-3">
+                <div class="admin-sidebar">
+                    <ul class="sidebar-menu">
+                        <li><a href="#" class="active" data-section="dashboard">
+                            <i class="fas fa-tachometer-alt"></i> Dashboard
+                        </a></li>
+                        <li><a href="#" data-section="users">
+                            <i class="fas fa-users"></i> Users Management
+                        </a></li>
+                        <li><a href="#" data-section="doctors">
+                            <i class="fas fa-user-md"></i> Doctors Management
+                        </a></li>
+                        <li><a href="#" data-section="hospitals">
+                            <i class="fas fa-hospital"></i> Hospitals Management
+                        </a></li>
+                        <li><a href="#" data-section="exports">
+                            <i class="fas fa-download"></i> Data Exports
+                        </a></li>
+                        <li><a href="#" data-section="admins">
+                            <i class="fas fa-user-shield"></i> Admin Management
+                        </a></li>
+                        <li><a href="#" data-section="reports">
+                            <i class="fas fa-chart-bar"></i> Reports
+                        </a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-md-9">
+                <div class="admin-content">
+                    <!-- Dashboard Section -->
+                    <div id="dashboard-section">
+                        <h2>Dashboard Overview</h2>
+                        
+                        <div class="row mb-4">
+                            <div class="col-md-3">
+                                <div class="stat-card">
+                                    <div class="stat-number" id="totalUsers">-</div>
+                                    <div class="stat-label">Total Users</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="stat-card">
+                                    <div class="stat-number" id="totalDoctors">-</div>
+                                    <div class="stat-label">Total Doctors</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="stat-card">
+                                    <div class="stat-number" id="totalHospitals">-</div>
+                                    <div class="stat-label">Total Hospitals</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="stat-card">
+                                    <div class="stat-number" id="totalAdmins">-</div>
+                                    <div class="stat-label">Total Admins</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="dashboard-card">
+                                    <h5><i class="fas fa-chart-line"></i> Recent Activity</h5>
+                                    <div id="recentActivity">
+                                        <p class="text-muted">Loading recent activity...</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="dashboard-card">
+                                    <h5><i class="fas fa-bell"></i> System Notifications</h5>
+                                    <div id="systemNotifications">
+                                        <p class="text-muted">Loading notifications...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Users Management Section -->
+                    <div id="users-section" class="hidden">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h2>Users Management</h2>
+                            <button class="btn btn-primary" onclick="showAddUserModal()">
+                                <i class="fas fa-plus"></i> Add User
+                            </button>
+                        </div>
+
+                        <div class="table-container">
+                            <table id="usersTable" class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Phone</th>
+                                        <th>Role</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Data will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Doctors Management Section -->
+                    <div id="doctors-section" class="hidden">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h2>Doctors Management</h2>
+                            <button class="btn btn-primary" onclick="showAddDoctorModal()">
+                                <i class="fas fa-plus"></i> Add Doctor
+                            </button>
+                        </div>
+
+                        <div class="table-container">
+                            <table id="doctorsTable" class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>License</th>
+                                        <th>Specialty</th>
+                                        <th>Experience</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Data will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Data Exports Section -->
+                    <div id="exports-section" class="hidden">
+                        <h2>Data Exports</h2>
+                        
+                        <div class="export-section">
+                            <h5><i class="fas fa-file-pdf"></i> PDF Exports</h5>
+                            <button class="btn-export" onclick="exportData('pdf', 'users')">
+                                <i class="fas fa-file-pdf"></i> Export Users (PDF)
+                            </button>
+                            <button class="btn-export" onclick="exportData('pdf', 'doctors')">
+                                <i class="fas fa-file-pdf"></i> Export Doctors (PDF)
+                            </button>
+                            <button class="btn-export" onclick="exportData('pdf', 'hospitals')">
+                                <i class="fas fa-file-pdf"></i> Export Hospitals (PDF)
+                            </button>
+                            <button class="btn-export" onclick="exportData('pdf', 'all')">
+                                <i class="fas fa-file-pdf"></i> Export All Data (PDF)
+                            </button>
+                        </div>
+
+                        <div class="export-section">
+                            <h5><i class="fas fa-file-excel"></i> Excel Exports</h5>
+                            <button class="btn-export" onclick="exportData('excel', 'users')">
+                                <i class="fas fa-file-excel"></i> Export Users (Excel)
+                            </button>
+                            <button class="btn-export" onclick="exportData('excel', 'doctors')">
+                                <i class="fas fa-file-excel"></i> Export Doctors (Excel)
+                            </button>
+                            <button class="btn-export" onclick="exportData('excel', 'hospitals')">
+                                <i class="fas fa-file-excel"></i> Export Hospitals (Excel)
+                            </button>
+                            <button class="btn-export" onclick="exportData('excel', 'all')">
+                                <i class="fas fa-file-excel"></i> Export All Data (Excel)
+                            </button>
+                        </div>
+
+                        <div class="export-section">
+                            <h5><i class="fas fa-envelope"></i> Email Exports</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label for="exportEmail" class="form-label">Email Address</label>
+                                    <input type="email" class="form-control" id="exportEmail" 
+                                           placeholder="Enter email address">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="exportType" class="form-label">Export Type</label>
+                                    <select class="form-control" id="exportType">
+                                        <option value="users">Users Data</option>
+                                        <option value="doctors">Doctors Data</option>
+                                        <option value="hospitals">Hospitals Data</option>
+                                        <option value="all">All Data</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button class="btn-export mt-3" onclick="emailExport()">
+                                <i class="fas fa-paper-plane"></i> Send via Email
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Admin Management Section -->
+                    <div id="admins-section" class="hidden">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h2>Admin Management</h2>
+                            <button class="btn btn-primary" onclick="showAddAdminModal()">
+                                <i class="fas fa-plus"></i> Add Admin
+                            </button>
+                        </div>
+
+                        <div class="table-container">
+                            <table id="adminsTable" class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Role</th>
+                                        <th>Created</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Data will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals will be added here -->
+    <div id="modals-container"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    <script src="js/admin-panel.js"></script>
+</body>
+</html>
