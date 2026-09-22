@@ -2,162 +2,330 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="theme-color" content="#6366f1">
-    <title>ER Wait Time - Modular Frontend</title>
-    
-    <!-- Google Fonts -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyWaitTime - Real-Time Emergency Room Wait Times</title>
+    <meta name="description" content="MyWaitTime shows real-time emergency room wait times, AI-powered predictions, GPS hospital finder, and turn-by-turn directions. Available on Web, Android, and iOS.">
+    <meta property="og:title" content="MyWaitTime - Know Your ER Wait Time Before You Go">
+    <meta property="og:description" content="Find the fastest emergency care near you with real-time ER wait times, AI predictions, and GPS directions. Available on Web, Android, and iOS.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://mywaitime.com/">
+    <link rel="icon" type="image/png" href="icon-192.png">
+    <link rel="apple-touch-icon" href="icon-192.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    
-    <!-- Custom Styles -->
-    <link rel="stylesheet" href="css/app.css">
-    <link rel="stylesheet" href="css/components.css">
-    
-    <!-- Leaflet CSS for Maps -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="theme-color" content="#0f766e" />
-  <style id="mobile-enhance">
-    *, *::before, *::after { box-sizing: border-box; }
-    html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
-    body { margin: 0; overflow-x: hidden; }
-    img, video, iframe, svg, canvas, table { max-width: 100%; height: auto; }
-    input, select, textarea, button { max-width: 100%; font-size: 16px; }
-    @media (max-width: 768px) {
-      body { padding-left: 12px; padding-right: 12px; }
-      h1 { font-size: 1.5rem; }
-    }
-  </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --primary-rgb: 99, 102, 241;
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --ink: #0f172a;
+            --body: #475569;
+            --muted: #94a3b8;
+            --bg: #f8fafc;
+            --radius: 18px;
+            --shadow: 0 24px 60px -20px rgba(15, 23, 42, 0.22);
+        }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            color: var(--body);
+            background: var(--bg);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+        a { text-decoration: none; }
+        img { display: block; max-width: 100%; }
+
+        .container { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+        /* Header */
+        header {
+            position: sticky; top: 0; z-index: 50;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+        }
+        nav { display: flex; align-items: center; justify-content: space-between; height: 72px; }
+        .brand { display: flex; align-items: center; gap: 12px; font-weight: 800; font-size: 1.25rem; color: var(--ink); }
+        .brand img { width: 38px; height: 38px; border-radius: 10px; box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.25); }
+        .brand span { color: var(--primary); }
+        .nav-links { display: flex; align-items: center; gap: 32px; }
+        .nav-links a { color: var(--body); font-weight: 500; font-size: 0.95rem; transition: color 0.2s; }
+        .nav-links a:hover { color: var(--primary); }
+        .btn {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 13px 26px; border-radius: 999px; font-weight: 600; font-size: 0.98rem;
+            transition: transform 0.2s, box-shadow 0.2s, background 0.2s; cursor: pointer; border: none;
+        }
+        .btn-primary { background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); color: #fff; box-shadow: 0 10px 24px -8px rgba(var(--primary-rgb), 0.55); }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 14px 30px -8px rgba(var(--primary-rgb), 0.6); }
+        .btn-ghost { background: rgba(15, 23, 42, 0.04); color: var(--ink); border: 1px solid rgba(15, 23, 42, 0.1); }
+        .btn-ghost:hover { background: rgba(15, 23, 42, 0.07); transform: translateY(-2px); }
+
+        /* Hero */
+        .hero { padding: 96px 0 72px; text-align: center; background: radial-gradient(ellipse 70% 55% at 50% -10%, rgba(var(--primary-rgb), 0.14), transparent 60%); }
+        .badge {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: rgba(var(--primary-rgb), 0.1); color: var(--primary-dark);
+            border: 1px solid rgba(var(--primary-rgb), 0.25);
+            padding: 7px 16px; border-radius: 999px; font-weight: 600; font-size: 0.85rem; margin-bottom: 28px;
+        }
+        .hero h1 { font-size: clamp(2.6rem, 6vw, 4.4rem); font-weight: 800; letter-spacing: -0.03em; color: var(--ink); line-height: 1.08; margin-bottom: 24px; }
+        .hero h1 .grad {
+            background: linear-gradient(120deg, var(--primary) 0%, #a855f7 60%, #ec4899 100%);
+            -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;
+        }
+        .hero p.lead { font-size: 1.25rem; color: var(--body); max-width: 640px; margin: 0 auto 36px; }
+        .hero-cta { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+        .hero-stats { display: flex; justify-content: center; gap: 56px; margin-top: 64px; flex-wrap: wrap; }
+        .stat b { display: block; font-size: 2rem; font-weight: 800; color: var(--ink); letter-spacing: -0.02em; }
+        .stat span { font-size: 0.92rem; color: var(--muted); }
+
+        /* Sections */
+        section { padding: 88px 0; }
+        .kicker { text-align: center; text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.78rem; font-weight: 700; color: var(--primary); margin-bottom: 14px; }
+        .sec-title { text-align: center; font-size: clamp(2rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: -0.02em; color: var(--ink); margin-bottom: 16px; }
+        .sec-sub { text-align: center; max-width: 640px; margin: 0 auto 52px; color: var(--body); font-size: 1.08rem; }
+
+        /* Platforms */
+        .platforms { background: #fff; }
+        .platform-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+        .platform-card {
+            background: var(--bg); border: 1px solid rgba(15, 23, 42, 0.08); border-radius: var(--radius);
+            padding: 40px 32px; text-align: center; transition: transform 0.25s, box-shadow 0.25s;
+        }
+        .platform-card:hover { transform: translateY(-6px); box-shadow: var(--shadow); }
+        .platform-icon {
+            width: 76px; height: 76px; margin: 0 auto 22px; border-radius: 22px; display: flex; align-items: center; justify-content: center;
+            font-size: 2rem; font-weight: 800; color: #fff;
+        }
+        .p-web { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+        .p-android { background: linear-gradient(135deg, #22c55e, #15803d); }
+        .p-ios { background: linear-gradient(135deg, #0f172a, #334155); }
+        .platform-card h3 { color: var(--ink); font-size: 1.35rem; font-weight: 700; margin-bottom: 10px; }
+        .platform-card p { font-size: 0.98rem; margin-bottom: 26px; min-height: 48px; }
+        .platform-card .btn { width: 100%; justify-content: center; }
+        .platform-note { text-align: center; margin-top: 30px; font-size: 0.95rem; color: var(--muted); }
+
+        /* Features */
+        .features { background: var(--bg); }
+        .feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+        .feature {
+            background: #fff; border: 1px solid rgba(15, 23, 42, 0.08); border-radius: var(--radius); padding: 30px 28px;
+        }
+        .feature-emoji { font-size: 1.9rem; margin-bottom: 14px; }
+        .feature h3 { color: var(--ink); font-size: 1.12rem; font-weight: 700; margin-bottom: 8px; }
+        .feature p { font-size: 0.95rem; }
+
+        /* How it works */
+        .how { background: #fff; }
+        .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; counter-reset: step; }
+        .step { position: relative; background: var(--bg); border-radius: var(--radius); padding: 28px 26px 26px; }
+        .step::before {
+            counter-increment: step; content: counter(step);
+            position: absolute; top: -18px; left: 26px;
+            width: 38px; height: 38px; border-radius: 12px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: #fff;
+            display: flex; align-items: center; justify-content: center; font-weight: 800;
+            box-shadow: 0 6px 14px -4px rgba(var(--primary-rgb), 0.5);
+        }
+        .step h3 { color: var(--ink); font-size: 1.08rem; font-weight: 700; margin-bottom: 8px; margin-top: 10px; }
+        .step p { font-size: 0.95rem; }
+
+        /* CTA */
+        .cta { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 60%, #ec4899 120%); border-radius: 28px; margin: 0 auto; max-width: 1120px; padding: 64px 40px; text-align: center; color: #fff; position: relative; overflow: hidden; }
+        .cta h2 { font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 800; letter-spacing: -0.02em; margin-bottom: 14px; }
+        .cta p { font-size: 1.08rem; opacity: 0.95; max-width: 560px; margin: 0 auto 32px; }
+        .cta .btn { background: #fff; color: var(--primary-dark); }
+        .cta .btn:hover { transform: translateY(-2px); box-shadow: 0 14px 30px -8px rgba(0, 0, 0, 0.35); }
+
+        /* Footer */
+        footer { background: #0f172a; color: #cbd5e1; padding: 56px 0 40px; margin-top: 88px; }
+        .footer-grid { display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 40px; padding-bottom: 40px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .footer-brand { display: flex; align-items: center; gap: 10px; font-weight: 800; color: #fff; font-size: 1.15rem; margin-bottom: 12px; }
+        .footer-brand img { width: 32px; height: 32px; border-radius: 8px; }
+        .footer-col h4 { color: #fff; font-size: 0.95rem; font-weight: 700; margin-bottom: 14px; }
+        .footer-col a { display: block; color: #94a3b8; font-size: 0.92rem; padding: 5px 0; transition: color 0.2s; }
+        .footer-col a:hover { color: #fff; }
+        .copyright { text-align: center; padding-top: 28px; font-size: 0.88rem; color: #64748b; }
+
+        @media (max-width: 900px) {
+            .platform-grid, .feature-grid, .steps { grid-template-columns: 1fr; }
+            .footer-grid { grid-template-columns: 1fr 1fr; }
+            .nav-links { display: none; }
+            .hero { padding: 72px 0 48px; }
+            .hero-stats { gap: 32px; }
+        }
+        @media (max-width: 520px) {
+            .footer-grid { grid-template-columns: 1fr; }
+        }
+    </style>
 </head>
 <body>
-    <!-- Navigation Header -->
-    <nav class="navbar navbar-expand-lg navbar-dark fixed-top" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
-        <div class="container-fluid">
-            <a class="navbar-brand d-flex align-items-center" href="#" style="font-weight: 700; font-size: 1.5rem;">
-                <i class="fas fa-hospital-alt me-2" style="color: #ffd700;"></i>
-                <span>ER Wait Time</span>
-            </a>
-            
-            <!-- Mobile Menu Toggle -->
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-                </button>
-            
-            <!-- Navigation Menu -->
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link active" href="#" data-tab="er-wait" style="border-radius: 8px; margin: 0 4px; transition: all 0.3s ease;">
-                            <i class="fas fa-clock me-1"></i>ER Wait Time
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" data-tab="chat" style="border-radius: 8px; margin: 0 4px; transition: all 0.3s ease;">
-                            <i class="fas fa-comments me-1"></i>AI Chat
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" data-tab="hospital" style="border-radius: 8px; margin: 0 4px; transition: all 0.3s ease;">
-                            <i class="fas fa-hospital me-1"></i>Find Hospitals
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" data-tab="registration" style="border-radius: 8px; margin: 0 4px; transition: all 0.3s ease;">
-                            <i class="fas fa-user-plus me-1"></i>Registration
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" data-tab="records" style="border-radius: 8px; margin: 0 4px; transition: all 0.3s ease;">
-                            <i class="fas fa-file-medical me-1"></i>Medical Records
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" data-tab="directions" style="border-radius: 8px; margin: 0 4px; transition: all 0.3s ease;">
-                            <i class="fas fa-directions me-1"></i>Directions
-                        </a>
-                    </li>
-                </ul>
-                
-                <!-- User Info & Status -->
-                <div class="navbar-text d-flex align-items-center">
-                    <div class="me-3 position-relative">
-                        <span class="badge bg-success me-2" style="cursor: pointer;" onclick="app.toggleStatusDashboard()">
-                            <i class="fas fa-circle me-1" style="font-size: 0.5rem;"></i>Backend Connected
-                        </span>
-                    </div>
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-user-circle me-1"></i>
-                        <span id="user-info">Guest User</span>
-                        <button id="logout-btn" class="btn btn-outline-light btn-sm ms-2" style="display: none;" onclick="window.app.logout()">
-                            <i class="fas fa-sign-out-alt me-1"></i>Logout
-                        </button>
-                    </div>
+    <header>
+        <nav class="container">
+            <a href="#" class="brand"><img src="icon-192.png" alt="MyWaitTime logo"><span>MyWaitTime</span></a>
+            <div class="nav-links">
+                <a href="#platforms">Platforms</a>
+                <a href="#features">Features</a>
+                <a href="#how">How It Works</a>
+                <a href="privacy.html">Privacy</a>
+                <a href="support.html">Support</a>
+            </div>
+            <a href="app/" class="btn btn-primary">Launch Web App</a>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <span class="badge">&#128640; Real-time hospital wait times</span>
+            <h1>Know Your ER Wait Time<br><span class="grad">Before You Go</span></h1>
+            <p class="lead">MyWaitTime shows live emergency room wait times, AI-powered predictions, and fast directions so you reach the right hospital when every minute counts.</p>
+            <div class="hero-cta">
+                <a href="app/" class="btn btn-primary">Try the Web App</a>
+                <a href="#platforms" class="btn btn-ghost">Get the App</a>
+            </div>
+            <div class="hero-stats">
+                <div class="stat"><b>100%</b><span>Free to use</span></div>
+                <div class="stat"><b>Live</b><span>Wait-time data</span></div>
+                <div class="stat"><b>AI</b><span>Smart predictions</span></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="platforms" id="platforms">
+        <div class="container">
+            <div class="kicker">Available everywhere</div>
+            <h2 class="sec-title">One App, Every Device</h2>
+            <p class="sec-sub">Use MyWaitTime on the web, or download the native app for Android and iOS.</p>
+            <div class="platform-grid">
+                <div class="platform-card">
+                    <div class="platform-icon p-web">&#127760;</div>
+                    <h3>Web App</h3>
+                    <p>Works instantly in any browser. No download required.</p>
+                    <a href="app/" class="btn btn-primary" target="_blank" rel="noopener">Open Web App</a>
+                </div>
+                <div class="platform-card">
+                    <div class="platform-icon p-android">&#129428;</div>
+                    <h3>Android</h3>
+                    <p>Get the native app on Google Play for Android phones and tablets.</p>
+                    <a href="https://play.google.com/store/apps/details?id=com.easytechnologiez.ERTime" class="btn btn-ghost" target="_blank" rel="noopener noreferrer">Google Play</a>
+                </div>
+                <div class="platform-card">
+                    <div class="platform-icon p-ios"></div>
+                    <h3>iOS</h3>
+                    <p>Download MyWaitTime on the App Store for iPhone and iPad.</p>
+                    <a href="https://apps.apple.com/ca/app/er-wait-time-emergency-wait/id1477437465" class="btn btn-ghost" target="_blank" rel="noopener noreferrer">App Store</a>
+                </div>
+            </div>
+            <p class="platform-note">Your data syncs across all platforms when you sign in.</p>
+        </div>
+    </section>
+
+    <section class="features" id="features">
+        <div class="container">
+            <div class="kicker">Why MyWaitTime</div>
+            <h2 class="sec-title">Built to Save You Time</h2>
+            <p class="sec-sub">Everything you need to make a smart decision in an emergency.</p>
+            <div class="feature-grid">
+                <div class="feature">
+                    <div class="feature-emoji">&#9201;</div>
+                    <h3>Real-Time Wait Times</h3>
+                    <p>Accurate, up-to-date emergency room wait times from hospitals near you &mdash; no more guessing.</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-emoji">&#129504;</div>
+                    <h3>AI-Powered Predictions</h3>
+                    <p>Smart algorithms analyze historical trends and live conditions to forecast wait times.</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-emoji">&#128506;</div>
+                    <h3>GPS Hospital Finder</h3>
+                    <p>Find the nearest emergency rooms with turn-by-turn directions to get there fast.</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-emoji">&#128172;</div>
+                    <h3>AI Medical Chat</h3>
+                    <p>Ask questions and get helpful guidance whenever you need quick information.</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-emoji">&#128203;</div>
+                    <h3>Medical Records</h3>
+                    <p>Keep your records organized, registered, and accessible right from your device.</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-emoji">&#128737;</div>
+                    <h3>Privacy First</h3>
+                    <p>Your health data is protected. You control what is shared and can delete it anytime.</p>
                 </div>
             </div>
         </div>
-    </nav>
+    </section>
 
-    <!-- Main Content Area -->
-    <main class="main-content">
-        <div class="container-fluid">
-            <!-- Tab Content Container -->
-            <div id="tab-content" class="tab-content fade-in">
-                <!-- Content will be loaded dynamically here -->
-            </div>
-        </div>
-    </main>
-
-    <!-- Loading Spinner -->
-    <div id="loading-spinner" class="loading-spinner d-none">
-        <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Loading...</span>
+    <section class="how" id="how">
+        <div class="container">
+            <div class="kicker">Simple by design</div>
+            <h2 class="sec-title">How It Works</h2>
+            <p class="sec-sub">Get the care you need faster in three easy steps.</p>
+            <div class="steps">
+                <div class="step">
+                    <h3>Open MyWaitTime</h3>
+                    <p>Launch the web app or open it on your Android or iOS device.</p>
                 </div>
-                        </div>
-
-    <!-- Toast Container for Notifications -->
-    <div class="toast-container position-fixed top-0 end-0 p-3">
-        <div id="notification-toast" class="toast" role="alert">
-            <div class="toast-header">
-                <i class="fas fa-info-circle text-primary me-2"></i>
-                <strong class="me-auto">Notification</strong>
-                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
-            </div>
-            <div class="toast-body" id="toast-message">
-                <!-- Message will be inserted here -->
+                <div class="step">
+                    <h3>Choose Your Hospital</h3>
+                    <p>See live wait times and AI predictions for ERs near you.</p>
+                </div>
+                <div class="step">
+                    <h3>Go with Confidence</h3>
+                    <p>Follow turn-by-turn directions straight to the best option.</p>
+                </div>
             </div>
         </div>
+    </section>
+
+    <div class="container">
+        <section class="cta">
+            <h2>Ready to Skip the Wait?</h2>
+            <p>Join people who check before they go. It&rsquo;s free, instant, and available on every device.</p>
+            <a href="app/" class="btn">Launch MyWaitTime</a>
+        </section>
     </div>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <!-- Leaflet JS for Maps -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
-    <!-- Application Scripts -->
-    <script src="js/app.js"></script>
-    <script src="js/router.js"></script>
-    <script src="js/api.js"></script>
-    <script src="js/utils.js"></script>
-    <script src="js/api-client.js"></script>
-    
-    <!-- Tab-specific Scripts (loaded dynamically) -->
-    <script src="js/tabs/er-wait.js"></script>
-    <script src="js/tabs/chat.js"></script>
-    <script src="js/tabs/hospital.js"></script>
-    <script src="js/tabs/registration.js"></script>
-    <script src="js/tabs/records.js"></script>
-    <script src="js/tabs/directions.js"></script>
+    <footer>
+        <div class="container">
+            <div class="footer-grid">
+                <div>
+                    <div class="footer-brand"><img src="icon-192.png" alt="MyWaitTime logo">MyWaitTime</div>
+                    <p style="font-size:0.92rem; ">Real-time emergency room wait times, powered by AI. Available on Web, Android, and iOS.</p>
+                </div>
+                <div class="footer-col">
+                    <h4>App</h4>
+                    <a href="app/">Web App</a>
+                    <a href="https://play.google.com/store/apps/details?id=com.easytechnologiez.ERTime" target="_blank" rel="noopener noreferrer">Android App</a>
+                    <a href="https://apps.apple.com/ca/app/er-wait-time-emergency-wait/id1477437465" target="_blank" rel="noopener noreferrer">iOS App</a>
+                </div>
+                <div class="footer-col">
+                    <h4>Legal</h4>
+                    <a href="privacy.html">Privacy Policy</a>
+                    <a href="terms.html">Terms of Service</a>
+                    <a href="delete.html">Delete Account</a>
+                </div>
+                <div class="footer-col">
+                    <h4>Support</h4>
+                    <a href="support.html">Get Help</a>
+                    <a href="mailto:info@innovatorsgeneration.com">Contact Us</a>
+                </div>
+            </div>
+            <div class="copyright">&copy; <span id="year"></span> MyWaitTime. All rights reserved.</div>
+        </div>
+    </footer>
+
+    <script>
+        document.getElementById('year').textContent = new Date().getFullYear();
+    </script>
 </body>
 </html>
