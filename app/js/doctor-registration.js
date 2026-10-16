@@ -4,7 +4,9 @@
 
 class DoctorRegistrationSystem {
     constructor() {
-        this.apiBaseUrl = 'https://api.mywaitime.com/api';
+        const host = (typeof location !== 'undefined' && location.hostname) || '';
+        const productionApi = host.includes('mywaitime.com') || host.includes('mywaittime.com') || host.includes('github.io');
+        this.apiBaseUrl = productionApi ? 'https://api.mywaitime.com/api' : '/api';
         this.selectedSpecialty = null;
         this.isProcessing = false;
         this.init();
@@ -320,56 +322,84 @@ class DoctorRegistrationSystem {
     }
 
     async submitDoctorRegistration(data) {
-        const payload = {
+        const password = this.generatePassword();
+        if (!window.AuthService) {
+            throw new Error('Auth service not loaded');
+        }
+
+        const registerResult = await window.AuthService.registerAccount({
             email: data.email,
-            password: this.generatePassword(), // Generate secure password
+            password,
             full_name: `${data.firstName} ${data.lastName}`,
+            first_name: data.firstName,
+            last_name: data.lastName,
             phone: data.phone,
             role: 'doctor',
             license_number: data.licenseNumber,
             years_experience: data.yearsExperience,
             medical_school: data.medicalSchool,
-            specialty: data.specialty
-        };
-
-        const response = await fetch(`${this.apiBaseUrl}/auth/register/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(payload)
+            specialty: data.specialty,
         });
 
-        const result = await response.json();
-        return result;
+        if (!registerResult.success) {
+            throw new Error(registerResult.message || 'Registration failed');
+        }
+
+        const loginResult = await window.AuthService.login({
+            email: data.email,
+            password,
+        });
+
+        const user = loginResult.success
+            ? window.AuthService.saveSession({ ...loginResult.user, role: 'doctor' })
+            : window.AuthService.saveSession({
+                ...(registerResult.data || {}),
+                email: data.email,
+                full_name: `${data.firstName} ${data.lastName}`,
+                role: 'doctor',
+            });
+
+        return {
+            success: true,
+            doctor: user,
+            temporaryPassword: password,
+            message: registerResult.message,
+        };
     }
 
     generatePassword() {
-        // Generate a secure password for the doctor
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
-        let password = '';
-        for (let i = 0; i < 12; i++) {
-            password += chars.charAt(Math.floor(Math.random() * chars.length));
+        // Strong password that satisfies backend validators
+        const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+        const lower = 'abcdefghijkmnopqrstuvwxyz';
+        const digits = '23456789';
+        const special = '!@#$%&*';
+        const pick = (s) => s.charAt(Math.floor(Math.random() * s.length));
+        let password = pick(upper) + pick(lower) + pick(digits) + pick(special);
+        const all = upper + lower + digits + special;
+        for (let i = 0; i < 10; i++) {
+            password += pick(all);
         }
-        return password;
+        return password.split('').sort(() => Math.random() - 0.5).join('');
     }
 
     handleSuccessfulRegistration(result) {
-        // Save doctor data
         localStorage.setItem('doctorData', JSON.stringify(result.doctor));
-        localStorage.setItem('userRole', 'doctor');
-        localStorage.setItem('isAuthenticated', 'true');
+        if (window.AuthService) {
+            window.AuthService.saveSession({ ...result.doctor, role: 'doctor' });
+        }
 
-        // Show success message
+        const tempHint = result.temporaryPassword
+            ? ` Temporary password: ${result.temporaryPassword} (save it now).`
+            : '';
+
         this.showNotification(
-            `🎉 Welcome Dr. ${result.doctor.full_name}! Registration successful. You will receive login credentials via email.`, 
+            `🎉 Welcome Dr. ${result.doctor.full_name || 'Doctor'}! Registration successful.${tempHint}`,
             'success'
         );
 
-        // Redirect to doctor dashboard
         setTimeout(() => {
-            window.location.href = 'doctor-dashboard.html';
-        }, 3000);
+            window.location.href = 'index.html#er-wait';
+        }, 4000);
     }
 
     showLoading(show) {

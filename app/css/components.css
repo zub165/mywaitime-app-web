@@ -534,3 +534,113 @@
         height: 300px;
     }
 }
+
+/* Responsive hardening for iPhone, iPad, and desktop */
+.filter-section,
+.hospital-card,
+.wait-time-card,
+.registration-form,
+.chat-container {
+    max-width: 100%;
+}
+
+.filter-row {
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    min-width: min(100%, 220px);
+}
+
+.filter-group .btn,
+.filter-group .form-control,
+.filter-group .form-select {
+    width: 100%;
+}
+
+.map-container {
+    min-height: 280px;
+    height: clamp(300px, 45vh, 520px);
+}
+
+.hospital-info {
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.hospital-actions {
+    width: 100%;
+}
+
+.records-tabs,
+#records-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+}
+
+#records-tabs .nav-item {
+    flex: 0 0 auto;
+}
+
+@media (min-width: 768px) and (max-width: 1199.98px) {
+    .filter-group {
+        flex: 1 1 calc(50% - 1rem);
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .map-container {
+        height: clamp(340px, 42vh, 480px);
+    }
+
+    .chat-container {
+        height: min(62vh, 620px);
+    }
+}
+
+@media (max-width: 767.98px) {
+    .filter-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .filter-group {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .map-container {
+        height: min(58vh, 360px);
+        min-height: 260px;
+        border-radius: var(--border-radius);
+    }
+
+    .hospital-info {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .hospital-body,
+    .hospital-header {
+        padding: 1rem;
+    }
+
+    .hospital-name {
+        font-size: 1.1rem;
+        line-height: 1.25;
+    }
+
+    .message-bubble {
+        max-width: 90%;
+    }
+}

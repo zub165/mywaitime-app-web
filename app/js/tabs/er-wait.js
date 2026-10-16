@@ -11,6 +11,11 @@ class ERWaitManager {
         this.updateInterval = null;
     }
 
+    findHospital(hospitalId) {
+        const key = String(hospitalId);
+        return this.hospitals.find(h => String(h.id) === key);
+    }
+
     /**
      * Initialize the ER Wait Time tab
      */
@@ -263,6 +268,27 @@ class ERWaitManager {
                                         <option value="critical">Critical (>120 minutes)</option>
                                     </select>
                                 </div>
+
+                <!-- User Reviews (5 categories) -->
+                <div class="mb-3">
+                    <label class="form-label">Quick Review (5 categories)</label>
+                    <div class="row g-2" id="quick-review">
+                        ${['Staff', 'Cleanliness', 'Waiting Area', 'Communication', 'Overall'].map((label, idx) => `
+                        <div class="col-6">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text w-50">${label}</span>
+                                <select class="form-select" data-category="${label.toLowerCase().replace(/\s+/g,'_')}">
+                                    <option value="1">1</option>
+                                    <option value="2">2</option>
+                                    <option value="3" selected>3</option>
+                                    <option value="4">4</option>
+                                    <option value="5">5</option>
+                                </select>
+                            </div>
+                        </div>
+                        `).join('')}
+                    </div>
+                </div>
                                 
                                 <div class="mb-3">
                                     <label for="additional-notes" class="form-label">Additional Notes (Optional)</label>
@@ -452,9 +478,9 @@ class ERWaitManager {
             const distance = hospital.distance && !isNaN(hospital.distance) ? 
                 `${hospital.distance.toFixed(1)} mi` : 
                 (this.currentLocation ? 
-                    `${this.calculateDistance(this.currentLocation.lat, this.currentLocation.lng, hospital.latitude, hospital.longitude).toFixed(1)} mi` : 
+                    `${this.calculateDistance(this.currentLocation.lat, this.currentLocation.lng, hospital.lat ?? hospital.latitude, hospital.lng ?? hospital.longitude).toFixed(1)} mi` : 
                     'Unknown');
-            const waitTime = `${hospital.wait_time} min`;
+            const waitTime = `${hospital.wait_time ?? '--'} min`;
             const performanceScore = hospital.performance_score || 0;
             const performanceGrade = hospital.performance_grade || 'N/A';
             const aiRating = parseFloat(hospital.ai_rating) || 0;
@@ -465,6 +491,7 @@ class ERWaitManager {
                         <div class="col-md-8">
                             <div class="d-flex align-items-center mb-2">
                                 <span class="badge bg-primary me-2">#${index + 1}</span>
+                                ${hospital.facility_sort_rank === 1 ? '<span class="badge bg-danger me-2">ER</span>' : ''}
                                 <h5 class="hospital-name mb-0">${hospital.name}</h5>
                             </div>
                             <p class="hospital-address mb-2">
@@ -607,7 +634,7 @@ class ERWaitManager {
      * Update wait time for a hospital
      */
     updateWaitTime(hospitalId) {
-        const hospital = this.hospitals.find(h => h.id === hospitalId);
+        const hospital = this.findHospital(hospitalId);
         if (!hospital) {
             console.error('Hospital not found for ID:', hospitalId);
             return;
@@ -702,6 +729,34 @@ class ERWaitManager {
         modal.show();
         console.log('Wait time modal opened for:', hospital.name);
         
+        // Extra safeguard: repeatedly ensure inputs are interactive for a short time
+        const ensureInteractiveInputs = () => {
+            const waitTimeInput = document.getElementById('wait-time-minutes');
+            const severityInput = document.getElementById('severity-level');
+            const notesInput = document.getElementById('additional-notes');
+
+            [waitTimeInput, severityInput, notesInput].forEach((el) => {
+                if (!el) return;
+                el.disabled = false;
+                el.readOnly = false;
+                el.style.pointerEvents = 'auto';
+                el.style.userSelect = 'auto';
+            });
+
+            // Remove any stale modal backdrops that might block clicks
+            document.querySelectorAll('.modal-backdrop').forEach((bd, idx) => {
+                if (idx > 0) bd.remove();
+            });
+        };
+
+        ensureInteractiveInputs();
+        let attempts = 0;
+        const intervalId = setInterval(() => {
+            attempts += 1;
+            ensureInteractiveInputs();
+            if (attempts >= 10) clearInterval(intervalId);
+        }, 100);
+
         // Add cleanup when modal is hidden
         modalElement.addEventListener('hidden.bs.modal', () => {
             console.log('Modal hidden, cleaning up...');
@@ -742,29 +797,51 @@ class ERWaitManager {
 
             // Update via Django API
             console.log('📡 Sending update request to Django API...');
+            // Collect quick review scores
+            const reviewScores = {};
+            const reviewContainer = document.getElementById('quick-review');
+            if (reviewContainer) {
+                reviewContainer.querySelectorAll('select[data-category]').forEach(sel => {
+                    reviewScores[sel.getAttribute('data-category')] = parseInt(sel.value);
+                });
+            }
+
+            // Send wait time update
             const response = await window.djangoAPI.updateHospitalWaitTime(hospitalId, waitTime, severity, notes);
             
             console.log('✅ Wait time updated via Django API:', response);
 
+            if (!response || (response.status && response.status !== 'success')) {
+                const message = (response && (response.message || response.detail)) || 'Update may not have been saved.';
+                throw new Error(message);
+            }
+
             // Update local data
-            const hospital = this.hospitals.find(h => h.id == hospitalId);
+            const hospital = this.findHospital(hospitalId);
             if (hospital) {
                 hospital.wait_time = waitTime;
                 hospital.severity = severity;
                 hospital.last_updated = new Date().toISOString();
                 
-                // Update the wait time in the API client's data
-                if (window.djangoAPI && window.djangoAPI.hospitals) {
-                    const apiHospital = window.djangoAPI.hospitals.find(h => h.id === hospitalId);
-                    if (apiHospital) {
-                        apiHospital.wait_time_prediction = waitTime;
-                    }
-                }
+
             }
 
             // Update display
             this.updateWaitTimesDisplay();
             this.updateStatsDisplay();
+
+            // Submit feedback separately (do not block main update)
+            try {
+                if (Object.keys(reviewScores).length > 0 && window.djangoAPI && window.djangoAPI.submitHospitalFeedback) {
+                    await window.djangoAPI.submitHospitalFeedback(hospitalId, {
+                        category_scores: reviewScores,
+                        notes
+                    });
+                    console.log('✅ Submitted review feedback for hospital', hospitalId, reviewScores);
+                }
+            } catch (e) {
+                console.warn('⚠️ Failed submitting review feedback (non-blocking):', e.message);
+            }
 
             // Close modal
             const modal = bootstrap.Modal.getInstance(document.getElementById('updateWaitTimeModal'));
@@ -788,7 +865,7 @@ class ERWaitManager {
      */
     async viewHospitalDetails(hospitalId) {
         try {
-        const hospital = this.hospitals.find(h => h.id === hospitalId);
+        const hospital = this.findHospital(hospitalId);
             if (!hospital) {
                 console.error('Hospital not found for ID:', hospitalId);
                 return;
@@ -912,7 +989,7 @@ class ERWaitManager {
      */
     async viewHospitalPerformance(hospitalId) {
         try {
-            const hospital = this.hospitals.find(h => h.id === hospitalId);
+            const hospital = this.findHospital(hospitalId);
             if (!hospital) {
                 throw new Error('Hospital not found');
             }
@@ -1048,7 +1125,7 @@ class ERWaitManager {
      */
     async getDirections(hospitalId) {
         try {
-        const hospital = this.hospitals.find(h => h.id === hospitalId);
+        const hospital = this.findHospital(hospitalId);
             if (!hospital) {
                 console.error('Hospital not found for ID:', hospitalId);
                 return;
@@ -1083,7 +1160,7 @@ class ERWaitManager {
             console.error('Error getting directions:', error);
             
             // Fallback to navigation to directions tab
-            const hospital = this.hospitals.find(h => h.id === hospitalId);
+            const hospital = this.findHospital(hospitalId);
             if (hospital && window.app) {
                 window.app.navigateToTab('directions');
                 setTimeout(() => {
@@ -1120,15 +1197,12 @@ class ERWaitManager {
 
         // Submit wait time update
         const submitBtn = document.getElementById('submit-wait-time-update');
-        if (submitBtn) {
-            console.log('✅ Submit button found, attaching event listener');
+        if (submitBtn && !submitBtn._bound) {
+            submitBtn._bound = true;
             submitBtn.addEventListener('click', (e) => {
                 e.preventDefault();
-                console.log('🖱️ Submit button clicked!');
                 this.submitWaitTimeUpdate();
             });
-        } else {
-            console.error('❌ Submit button not found!');
         }
 
         // Manual location form

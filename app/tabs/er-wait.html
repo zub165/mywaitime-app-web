@@ -1,0 +1,154 @@
+<!-- ER Wait Time Tab -->
+<div class="page-header">
+    <div class="container">
+        <h1 class="page-title">
+            <i class="fas fa-clock me-3"></i>ER Wait Times
+        </h1>
+        <p class="page-subtitle">Real-time emergency room wait times for nearby hospitals</p>
+    </div>
+</div>
+
+<div class="container">
+    <!-- Location Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-map-marker-alt me-2"></i>Your Location
+                </div>
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <div id="location-info" class="d-flex align-items-center">
+                                <i class="fas fa-spinner fa-spin me-2"></i>
+                                <span>Getting your location...</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <button id="refresh-location" class="btn btn-primary">
+                                <i class="fas fa-sync-alt me-1"></i>Refresh Location
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Overview -->
+    <div class="stats-grid" id="stats-overview">
+        <!-- Stats will be populated by JavaScript -->
+    </div>
+
+    <!-- Hospital Wait Times -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="fas fa-hospital me-2"></i>Hospital Wait Times
+                    </div>
+                    <div>
+                        <button id="refresh-wait-times" class="btn btn-sm btn-outline-light">
+                            <i class="fas fa-sync-alt me-1"></i>Refresh
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="wait-times-container">
+                        <div class="text-center py-4">
+                            <i class="fas fa-spinner fa-spin fa-2x text-muted mb-3"></i>
+                            <p class="text-muted">Loading wait times...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Update Wait Time Modal -->
+    <div class="modal fade" id="updateWaitTimeModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-clock me-2"></i>Update Wait Time
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="update-wait-time-form">
+                        <input type="hidden" id="update-hospital-id">
+                        
+                        <div class="mb-3">
+                            <label for="wait-time-minutes" class="form-label">Wait Time (minutes)</label>
+                            <input type="number" class="form-control" id="wait-time-minutes" 
+                                   min="0" max="480" placeholder="Enter wait time in minutes">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="severity-level" class="form-label">Severity Level</label>
+                            <select class="form-select" id="severity-level">
+                                <option value="low">Low - Non-urgent</option>
+                                <option value="medium">Medium - Urgent</option>
+                                <option value="high">High - Emergency</option>
+                                <option value="critical">Critical - Life-threatening</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="additional-notes" class="form-label">Additional Notes (Optional)</label>
+                            <textarea class="form-control" id="additional-notes" rows="3" 
+                                      placeholder="Any additional information about the wait time..."></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="submit-wait-time-update">
+                        <i class="fas fa-save me-1"></i>Update Wait Time
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-info-circle me-2"></i>Wait Time Legend
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 col-sm-6 mb-2">
+                            <div class="d-flex align-items-center">
+                                <span class="badge bg-success me-2">Low</span>
+                                <small class="text-muted">0-30 minutes</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-sm-6 mb-2">
+                            <div class="d-flex align-items-center">
+                                <span class="badge bg-warning me-2">Medium</span>
+                                <small class="text-muted">31-60 minutes</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-sm-6 mb-2">
+                            <div class="d-flex align-items-center">
+                                <span class="badge bg-warning me-2">High</span>
+                                <small class="text-muted">61-120 minutes</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-sm-6 mb-2">
+                            <div class="d-flex align-items-center">
+                                <span class="badge bg-danger me-2">Critical</span>
+                                <small class="text-muted">120+ minutes</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

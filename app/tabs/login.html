@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - ER Wait Time</title>
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white text-center">
+                        <h4><i class="fas fa-sign-in-alt"></i> Login to Account</h4>
+                    </div>
+                    <div class="card-body">
+                        <form id="loginForm">
+                            <div class="mb-3">
+                                <label for="loginEmail" class="form-label">Email or Username</label>
+                                <input type="text" class="form-control" id="loginEmail"
+                                       placeholder="Enter your email or username" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="loginPassword" class="form-label">Password</label>
+                                <input type="password" class="form-control" id="loginPassword"
+                                       placeholder="Enter your password" required>
+                            </div>
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="rememberMe">
+                                <label class="form-check-label" for="rememberMe">Remember me</label>
+                            </div>
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-sign-in-alt"></i> Login
+                                </button>
+                            </div>
+                        </form>
+                        <div class="text-center mt-3">
+                            <a href="#" id="forgotLink">Forgot password?</a>
+                            <p class="text-muted mt-2 mb-1">Don't have an account?
+                                <a href="smart-login.html">Register here</a>
+                            </p>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="quickAdminLogin()">
+                                <i class="fas fa-key"></i> Quick Admin Access
+                            </button>
+                        </div>
+                        <div id="forgotBox" class="mt-3 d-none">
+                            <label class="form-label">Email for password reset</label>
+                            <div class="input-group">
+                                <input type="email" class="form-control" id="forgotEmail" placeholder="you@example.com">
+                                <button class="btn btn-outline-primary" type="button" id="sendResetBtn">Send link</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/auth.js"></script>
+    <script>
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show`;
+            notification.style.cssText = 'position:fixed;top:20px;right:20px;z-index:9999;min-width:300px;';
+            notification.innerHTML = `${message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 5000);
+        }
+
+        function quickAdminLogin() {
+            document.getElementById('loginEmail').value = 'zm_199@hotmail.com';
+            document.getElementById('loginPassword').value = 'Bismilah786';
+            showNotification('🔑 Admin credentials loaded!', 'success');
+        }
+
+        document.getElementById('forgotLink').addEventListener('click', (e) => {
+            e.preventDefault();
+            document.getElementById('forgotBox').classList.toggle('d-none');
+            const email = document.getElementById('loginEmail').value;
+            if (email.includes('@')) document.getElementById('forgotEmail').value = email;
+        });
+
+        document.getElementById('sendResetBtn').addEventListener('click', async () => {
+            const email = document.getElementById('forgotEmail').value.trim();
+            const result = await AuthService.requestPasswordReset(email);
+            showNotification(result.message, result.success ? 'success' : 'error');
+        });
+
+        document.getElementById('loginForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const identifier = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            try {
+                const result = await AuthService.login({
+                    email: identifier.includes('@') ? identifier : undefined,
+                    username: identifier.includes('@') ? undefined : identifier,
+                    password,
+                });
+                if (result.success) {
+                    showNotification(`👋 Welcome back ${result.user.full_name}!`, 'success');
+                    AuthService.redirectAfterAuth(result.user);
+                } else {
+                    showNotification(`❌ ${result.message || 'Login failed'}`, 'error');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showNotification('❌ Login failed. Please try again.', 'error');
+            }
+        });
+    </script>
+</body>
+</html>

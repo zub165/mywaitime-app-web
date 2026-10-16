@@ -1,0 +1,485 @@
+<!-- Enhanced AI-Powered Registration Tab -->
+<link rel="stylesheet" href="css/registration-enhanced.css">
+<div class="page-header">
+    <div class="container">
+        <h1 class="page-title">
+            <i class="fas fa-user-plus me-3"></i>Quick Patient Registration
+        </h1>
+        <p class="page-subtitle">AI-powered registration - Complete in under 20 seconds</p>
+        <div class="registration-timer">
+            <i class="fas fa-stopwatch me-2"></i>
+            <span id="registration-timer">00:00</span>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="registration-form">
+                <form id="patient-registration-form">
+                    <!-- Quick Personal Information Section -->
+                    <div class="form-section">
+                        <h3 class="section-title">
+                            <i class="fas fa-user me-2"></i>Personal Information
+                            <span class="badge bg-success ms-2">Required</span>
+                        </h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="first-name" class="form-label">First Name *</label>
+                                <input type="text" class="form-control" id="first-name" required placeholder="Enter first name">
+                            </div>
+                            <div class="form-group">
+                                <label for="last-name" class="form-label">Last Name *</label>
+                                <input type="text" class="form-control" id="last-name" required placeholder="Enter last name">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="date-of-birth" class="form-label">Date of Birth *</label>
+                                <input type="date" class="form-control" id="date-of-birth" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="gender" class="form-label">Gender *</label>
+                                <div class="gender-options">
+                                    <button type="button" class="btn btn-outline-primary gender-btn" data-value="male">
+                                        <i class="fas fa-mars"></i> Male
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary gender-btn" data-value="female">
+                                        <i class="fas fa-venus"></i> Female
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary gender-btn" data-value="other">
+                                        <i class="fas fa-transgender"></i> Other
+                                    </button>
+                            </div>
+                                <input type="hidden" id="gender" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Contact Information Section -->
+                    <div class="form-section">
+                        <h3 class="section-title">
+                            <i class="fas fa-phone me-2"></i>Contact Information
+                            <span class="badge bg-success ms-2">Required</span>
+                        </h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="phone" class="form-label">Phone Number *</label>
+                                <input type="tel" class="form-control" id="phone" required placeholder="(555) 123-4567">
+                            </div>
+                            <div class="form-group">
+                                <label for="email" class="form-label">Email Address</label>
+                                <input type="email" class="form-control" id="email" placeholder="optional@email.com">
+                            </div>
+                        </div>
+                        <div class="quick-address">
+                            <label class="form-label">Quick Address Selection *</label>
+                            <div class="address-buttons">
+                                <button type="button" class="btn btn-outline-secondary address-btn" data-city="Tampa" data-state="FL" data-zip="33601">
+                                    <i class="fas fa-map-marker-alt"></i> Tampa, FL
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary address-btn" data-city="Orlando" data-state="FL" data-zip="32801">
+                                    <i class="fas fa-map-marker-alt"></i> Orlando, FL
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary address-btn" data-city="Miami" data-state="FL" data-zip="33101">
+                                    <i class="fas fa-map-marker-alt"></i> Miami, FL
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary address-btn" data-city="Jacksonville" data-state="FL" data-zip="32201">
+                                    <i class="fas fa-map-marker-alt"></i> Jacksonville, FL
+                                </button>
+                        </div>
+                            <div class="custom-address mt-3">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="city" class="form-label">City *</label>
+                                        <input type="text" class="form-control" id="city" required placeholder="City">
+                            </div>
+                            <div class="form-group">
+                                <label for="state" class="form-label">State *</label>
+                                <select class="form-select" id="state" required>
+                                            <option value="FL" selected>Florida</option>
+                                    <option value="CA">California</option>
+                                    <option value="TX">Texas</option>
+                                    <option value="NY">New York</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="zip-code" class="form-label">ZIP Code *</label>
+                                        <input type="text" class="form-control" id="zip-code" required placeholder="12345">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AI-Powered Medical Information Section -->
+                    <div class="form-section">
+                        <h3 class="section-title">
+                            <i class="fas fa-robot me-2"></i>AI-Powered Medical Information
+                            <span class="badge bg-info ms-2">Smart</span>
+                        </h3>
+                        
+                        <!-- Quick Medical Conditions -->
+                        <div class="form-group">
+                            <label class="form-label">Common Conditions (Click to Add)</label>
+                            <div class="condition-buttons">
+                                <button type="button" class="btn btn-outline-warning condition-btn" data-icd10="I10" data-name="Hypertension">
+                                    <i class="fas fa-heart"></i> Hypertension
+                                </button>
+                                <button type="button" class="btn btn-outline-warning condition-btn" data-icd10="E11" data-name="Type 2 Diabetes">
+                                    <i class="fas fa-vial"></i> Diabetes
+                                </button>
+                                <button type="button" class="btn btn-outline-warning condition-btn" data-icd10="J44" data-name="COPD">
+                                    <i class="fas fa-lungs"></i> COPD
+                                </button>
+                                <button type="button" class="btn btn-outline-warning condition-btn" data-icd10="M79" data-name="Fibromyalgia">
+                                    <i class="fas fa-bone"></i> Fibromyalgia
+                                </button>
+                                <button type="button" class="btn btn-outline-warning condition-btn" data-icd10="G43" data-name="Migraine">
+                                    <i class="fas fa-head-side-virus"></i> Migraine
+                                </button>
+                                <button type="button" class="btn btn-outline-warning condition-btn" data-icd10="F32" data-name="Depression">
+                                    <i class="fas fa-brain"></i> Depression
+                                </button>
+                            </div>
+                            <div id="selected-conditions" class="selected-conditions mt-2"></div>
+                        </div>
+
+                        <!-- AI Medication Lookup -->
+                        <div class="form-group">
+                            <label for="medication-search" class="form-label">Current Medications (AI-Enhanced)</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="medication-search" placeholder="Type medication name for AI lookup...">
+                                <button class="btn btn-outline-primary" type="button" id="search-medication">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                            <div id="medication-results" class="medication-results mt-2"></div>
+                            <div id="selected-medications" class="selected-medications mt-2"></div>
+                        </div>
+
+                        <!-- Quick Allergies -->
+                        <div class="form-group">
+                            <label class="form-label">Common Allergies (Click to Add)</label>
+                            <div class="allergy-buttons">
+                                <button type="button" class="btn btn-outline-danger allergy-btn" data-allergy="Penicillin">
+                                    <i class="fas fa-exclamation-triangle"></i> Penicillin
+                                </button>
+                                <button type="button" class="btn btn-outline-danger allergy-btn" data-allergy="Latex">
+                                    <i class="fas fa-exclamation-triangle"></i> Latex
+                                </button>
+                                <button type="button" class="btn btn-outline-danger allergy-btn" data-allergy="Shellfish">
+                                    <i class="fas fa-fish"></i> Shellfish
+                                </button>
+                                <button type="button" class="btn btn-outline-danger allergy-btn" data-allergy="Nuts">
+                                    <i class="fas fa-seedling"></i> Nuts
+                                </button>
+                                <button type="button" class="btn btn-outline-danger allergy-btn" data-allergy="Sulfa">
+                                    <i class="fas fa-exclamation-triangle"></i> Sulfa
+                                </button>
+                                <button type="button" class="btn btn-outline-danger allergy-btn" data-allergy="Iodine">
+                                    <i class="fas fa-exclamation-triangle"></i> Iodine
+                                </button>
+                            </div>
+                            <div id="selected-allergies" class="selected-allergies mt-2"></div>
+                        </div>
+
+                        <!-- AI Symptom Checker -->
+                        <div class="form-group">
+                            <label for="symptoms" class="form-label">Current Symptoms (AI Analysis)</label>
+                            <textarea class="form-control" id="symptoms" rows="2" 
+                                      placeholder="Describe your symptoms for AI analysis..."></textarea>
+                            <div class="ai-analysis mt-2">
+                                <button type="button" class="btn btn-outline-info" id="analyze-symptoms">
+                                    <i class="fas fa-brain"></i> AI Symptom Analysis
+                                </button>
+                                <div id="symptom-analysis" class="symptom-analysis mt-2"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Emergency Contact -->
+                    <div class="form-section">
+                        <h3 class="section-title">
+                            <i class="fas fa-phone-alt me-2"></i>Emergency Contact
+                            <span class="badge bg-warning ms-2">Quick Setup</span>
+                        </h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="emergency-name" class="form-label">Emergency Contact Name *</label>
+                                <input type="text" class="form-control" id="emergency-name" required placeholder="Emergency contact name">
+                            </div>
+                            <div class="form-group">
+                                <label for="emergency-relationship" class="form-label">Relationship *</label>
+                                <div class="relationship-options">
+                                    <button type="button" class="btn btn-outline-secondary relationship-btn" data-value="spouse">
+                                        <i class="fas fa-heart"></i> Spouse
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary relationship-btn" data-value="parent">
+                                        <i class="fas fa-user-friends"></i> Parent
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary relationship-btn" data-value="child">
+                                        <i class="fas fa-child"></i> Child
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary relationship-btn" data-value="sibling">
+                                        <i class="fas fa-users"></i> Sibling
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary relationship-btn" data-value="friend">
+                                        <i class="fas fa-handshake"></i> Friend
+                                    </button>
+                                </div>
+                                <input type="hidden" id="emergency-relationship" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="emergency-phone" class="form-label">Emergency Contact Phone *</label>
+                                <input type="tel" class="form-control" id="emergency-phone" required placeholder="(555) 123-4567">
+                            </div>
+                            <div class="form-group">
+                                <label for="emergency-email" class="form-label">Emergency Contact Email</label>
+                                <input type="email" class="form-control" id="emergency-email" placeholder="optional@email.com">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Insurance Section -->
+                    <div class="form-section">
+                        <h3 class="section-title">
+                            <i class="fas fa-id-card me-2"></i>Insurance Information
+                            <span class="badge bg-secondary ms-2">Optional</span>
+                        </h3>
+                        <div class="insurance-toggle">
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="has-insurance">
+                                <label class="form-check-label" for="has-insurance">
+                                    <strong>I have insurance coverage</strong>
+                                </label>
+                            </div>
+                            <div id="insurance-fields" class="insurance-fields" style="display: none;">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="insurance-provider" class="form-label">Insurance Provider</label>
+                                        <select class="form-select" id="insurance-provider">
+                                            <option value="">Select Provider</option>
+                                            <option value="BCBS">Blue Cross Blue Shield</option>
+                                            <option value="Aetna">Aetna</option>
+                                            <option value="Cigna">Cigna</option>
+                                            <option value="UnitedHealth">UnitedHealthcare</option>
+                                            <option value="Humana">Humana</option>
+                                            <option value="Medicare">Medicare</option>
+                                            <option value="Medicaid">Medicaid</option>
+                                            <option value="other">Other</option>
+                                        </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="policy-number" class="form-label">Policy Number</label>
+                                        <input type="text" class="form-control" id="policy-number" placeholder="Policy/Member ID">
+                            </div>
+                        </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Consent Section -->
+                    <div class="form-section">
+                        <h3 class="section-title">
+                            <i class="fas fa-check-circle me-2"></i>Quick Consent & Agreement
+                            <span class="badge bg-success ms-2">Required</span>
+                        </h3>
+                        <div class="consent-cards">
+                            <div class="form-check consent-card">
+                            <input class="form-check-input" type="checkbox" id="consent-treatment" required>
+                            <label class="form-check-label" for="consent-treatment">
+                                    <i class="fas fa-heartbeat me-2"></i>
+                                    <strong>Medical Treatment Consent</strong>
+                                    <small class="d-block text-muted">I consent to receive medical treatment</small>
+                            </label>
+                        </div>
+                            <div class="form-check consent-card">
+                            <input class="form-check-input" type="checkbox" id="consent-privacy" required>
+                            <label class="form-check-label" for="consent-privacy">
+                                    <i class="fas fa-shield-alt me-2"></i>
+                                    <strong>Privacy Policy Consent</strong>
+                                    <small class="d-block text-muted">I consent to data collection for medical purposes</small>
+                            </label>
+                        </div>
+                            <div class="form-check consent-card">
+                            <input class="form-check-input" type="checkbox" id="consent-emergency">
+                            <label class="form-check-label" for="consent-emergency">
+                                    <i class="fas fa-phone me-2"></i>
+                                    <strong>Emergency Contact Consent</strong>
+                                    <small class="d-block text-muted">I consent to emergency contact notification</small>
+                            </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submit Section with Timer -->
+                    <div class="form-section text-center">
+                        <div class="registration-stats mb-3">
+                            <div class="row text-center">
+                                <div class="col-4">
+                                    <div class="stat-item">
+                                        <i class="fas fa-clock text-primary"></i>
+                                        <div class="stat-value" id="completion-time">0s</div>
+                                        <div class="stat-label">Time</div>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="stat-item">
+                                        <i class="fas fa-check-circle text-success"></i>
+                                        <div class="stat-value" id="completion-percentage">0%</div>
+                                        <div class="stat-label">Complete</div>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="stat-item">
+                                        <i class="fas fa-robot text-info"></i>
+                                        <div class="stat-value" id="ai-features">0</div>
+                                        <div class="stat-label">AI Features</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-success btn-lg px-5">
+                            <i class="fas fa-paper-plane me-2"></i>Submit Registration
+                            <span class="badge bg-light text-dark ms-2" id="submit-timer">Ready</span>
+                        </button>
+                        <div class="mt-2">
+                            <small class="text-muted">Registration will be processed instantly with AI validation</small>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- AI Registration Assistant -->
+            <div class="card mb-3">
+                <div class="card-header bg-info text-white">
+                    <i class="fas fa-robot me-2"></i>AI Registration Assistant
+                </div>
+                <div class="card-body">
+                    <div id="ai-assistant-status">
+                        <div class="ai-status-item">
+                            <i class="fas fa-brain text-info"></i>
+                            <span>AI Symptom Analysis: Ready</span>
+                        </div>
+                        <div class="ai-status-item">
+                            <i class="fas fa-pills text-success"></i>
+                            <span>Medication Lookup: Active</span>
+                        </div>
+                        <div class="ai-status-item">
+                            <i class="fas fa-code text-warning"></i>
+                            <span>ICD-10 Validation: Online</span>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <button class="btn btn-outline-info btn-sm w-100" id="ai-help">
+                            <i class="fas fa-question-circle me-2"></i>Get AI Help
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Registration Progress -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="fas fa-chart-line me-2"></i>Registration Progress
+                </div>
+                <div class="card-body">
+                    <div class="progress mb-2" style="height: 20px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                             id="progress-bar" role="progressbar" style="width: 0%">
+                            <span id="progress-text">0%</span>
+                        </div>
+                    </div>
+                    <div class="progress-steps">
+                        <div class="step" id="step-personal">
+                            <i class="fas fa-user"></i> Personal Info
+                        </div>
+                        <div class="step" id="step-contact">
+                            <i class="fas fa-phone"></i> Contact Info
+                        </div>
+                        <div class="step" id="step-medical">
+                            <i class="fas fa-heartbeat"></i> Medical Info
+                        </div>
+                        <div class="step" id="step-emergency">
+                            <i class="fas fa-phone-alt"></i> Emergency Contact
+                        </div>
+                        <div class="step" id="step-consent">
+                            <i class="fas fa-check-circle"></i> Consent
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="fas fa-bolt me-2"></i>Quick Actions
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-primary btn-sm" id="auto-fill-form">
+                            <i class="fas fa-magic me-2"></i>Auto-Fill Common Info
+                        </button>
+                        <button class="btn btn-outline-success btn-sm" id="save-draft">
+                            <i class="fas fa-save me-2"></i>Save Draft
+                        </button>
+                        <button class="btn btn-outline-info btn-sm" id="validate-form">
+                            <i class="fas fa-check-double me-2"></i>Validate Form
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Features Used -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="fas fa-star me-2"></i>AI Features Used
+                </div>
+                <div class="card-body">
+                    <div id="ai-features-used">
+                        <div class="feature-item">
+                            <i class="fas fa-search text-primary"></i>
+                            <span>Medication Search: 0</span>
+                        </div>
+                        <div class="feature-item">
+                            <i class="fas fa-code text-success"></i>
+                            <span>ICD-10 Lookups: 0</span>
+                        </div>
+                        <div class="feature-item">
+                            <i class="fas fa-brain text-info"></i>
+                            <span>Symptom Analysis: 0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Emergency Information -->
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Emergency Information
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger">
+                        <strong>Medical Emergency?</strong>
+                        <p class="mb-0 mt-2">Call 911 immediately or go to the nearest emergency room.</p>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <a href="tel:911" class="btn btn-danger">
+                            <i class="fas fa-phone me-2"></i>Call 911
+                        </a>
+                        <button class="btn btn-outline-danger btn-sm" id="emergency-mode">
+                            <i class="fas fa-bolt me-2"></i>Emergency Mode
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+

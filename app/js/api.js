@@ -5,7 +5,9 @@
 
 class APIClient {
     constructor(baseUrl) {
-        this.baseUrl = baseUrl || 'https://api.mywaitime.com/api';
+        const host = (typeof location !== 'undefined' && location.hostname) || '';
+        const productionApi = host.includes('mywaitime.com') || host.includes('mywaittime.com') || host.includes('github.io');
+        this.baseUrl = baseUrl || (productionApi ? 'https://api.mywaitime.com/api' : '/api');
         this.defaultHeaders = {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
@@ -106,11 +108,15 @@ class APIClient {
     /**
      * Search for hospitals
      */
-    async searchHospitals(query, lat = null, lng = null, radius = 25) {
-        const params = { query, radius };
-        if (lat && lng) {
+    async searchHospitals(query, lat = null, lon = null, radiusMiles = 25, facilityType = null, sort = 'smart') {
+        // Backend contract (Django): /api/hospitals/search/?q=&lat=&lon=&radius_miles=&type=&sort=
+        const params = { q: query || '', radius_miles: radiusMiles, sort: sort || 'smart' };
+        if (lat != null && lon != null) {
             params.lat = lat;
-            params.lng = lng;
+            params.lon = lon;
+        }
+        if (facilityType) {
+            params.type = facilityType;
         }
         return this.get('/hospitals/search/', params);
     }
@@ -125,11 +131,12 @@ class APIClient {
     /**
      * Get nearby hospitals
      */
-    async getNearbyHospitals(lat, lng, radius = 25) {
+    async getNearbyHospitals(lat, lng, radius = 25, sort = 'smart') {
         return this.get('/hospitals/nearby/', {
             lat: lat,
             lng: lng,
-            radius: radius
+            radius: radius,
+            sort: sort || 'smart',
         });
     }
 

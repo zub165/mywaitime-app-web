@@ -8,9 +8,12 @@ class ERWaitTimeApp {
         this.currentTab = 'er-wait';
         this.isLoading = false;
         this.user = null;
+        const host = (typeof location !== 'undefined' && location.hostname) || '';
+        const productionApi = host.includes('mywaitime.com') || host.includes('mywaittime.com') || host.includes('github.io');
         this.config = {
-            apiBaseUrl: 'https://api.mywaitime.com/api',
-            mapApiKey: 'your-map-api-key', // Add your map API key here
+            // Local Node :3002 proxies /api → Django; GitHub Pages must call api.mywaitime.com
+            apiBaseUrl: productionApi ? 'https://api.mywaitime.com/api' : '/api',
+            mapApiKey: 'your-map-api-key',
             defaultLocation: {
                 lat: 27.9506,
                 lng: -82.4572,
@@ -89,13 +92,6 @@ class ERWaitTimeApp {
         window.addEventListener('error', (event) => {
             console.error('Global error caught:', event.error);
             // Don't let errors crash the entire application
-            event.preventDefault();
-        });
-
-        // Add global handler for unhandled promise rejections
-        window.addEventListener('unhandledrejection', (event) => {
-            console.error('Unhandled promise rejection:', event.reason);
-            // Don't let promise rejections crash the application
             event.preventDefault();
         });
 
@@ -332,12 +328,11 @@ class ERWaitTimeApp {
 
                 await initializer();
                 
-                // Restore original console.error
-                console.error = originalConsoleError;
-                
             } catch (error) {
                 console.error(`Failed to initialize ${tabName} tab:`, error);
                 this.showNotification(`Failed to initialize ${tabName} functionality`, 'warning');
+            } finally {
+                console.error = originalConsoleError;
             }
         }
     }
@@ -472,9 +467,15 @@ class ERWaitTimeApp {
      */
     async checkUserSession() {
         try {
-            const userData = localStorage.getItem('er-wait-user');
-            if (userData) {
-                this.user = JSON.parse(userData);
+            if (window.AuthService) {
+                this.user = window.AuthService.getSession();
+            } else {
+                const userData = localStorage.getItem('er-wait-user') || localStorage.getItem('user');
+                if (userData) {
+                    this.user = JSON.parse(userData);
+                }
+            }
+            if (this.user) {
                 this.updateUserInfo();
             }
         } catch (error) {
@@ -626,8 +627,14 @@ class ERWaitTimeApp {
      * Set current user
      */
     setCurrentUser(user) {
-        this.user = user;
-        localStorage.setItem('er-wait-user', JSON.stringify(user));
+        this.user = window.AuthService ? window.AuthService.saveSession(user) : user;
+        if (!window.AuthService) {
+            localStorage.setItem('er-wait-user', JSON.stringify(user));
+            localStorage.setItem('user', JSON.stringify(user));
+            localStorage.setItem('isAuthenticated', 'true');
+            if (user && user.role) localStorage.setItem('userRole', user.role);
+            if (user && user.token) localStorage.setItem('authToken', user.token);
+        }
         this.updateUserInfo();
     }
 
@@ -636,7 +643,15 @@ class ERWaitTimeApp {
      */
     clearUserSession() {
         this.user = null;
-        localStorage.removeItem('er-wait-user');
+        if (window.AuthService) {
+            window.AuthService.clearSession();
+        } else {
+            localStorage.removeItem('er-wait-user');
+            localStorage.removeItem('user');
+            localStorage.removeItem('userRole');
+            localStorage.removeItem('isAuthenticated');
+            localStorage.removeItem('authToken');
+        }
         this.updateUserInfo();
     }
 
@@ -669,6 +684,7 @@ class ERWaitTimeApp {
                 <div class="auth-tabs">
                     <button class="auth-tab active" data-tab="register">Register</button>
                     <button class="auth-tab" data-tab="login">Login</button>
+                    <button class="auth-tab" data-tab="forgot">Forgot</button>
                 </div>
 
                 <div class="auth-content">
@@ -679,29 +695,29 @@ class ERWaitTimeApp {
                             <div class="form-group">
                                 <label for="reg-role">I am a:</label>
                                 <select id="reg-role" required>
-                                    <option value="user">Patient</option>
+                                    <option value="user">Patient / User</option>
                                     <option value="doctor">Doctor</option>
-                                    <option value="admin">Administrator</option>
                                 </select>
+                                <small style="color:#888;display:block;margin-top:4px;">Admins cannot self-register — use Login with an admin account.</small>
                             </div>
                             <div class="form-group">
-                                <input type="text" id="reg-username" placeholder="Username" required>
+                                <label for="reg-email" style="font-size:0.85rem;color:#555;">Email</label>
+                                <input type="email" id="reg-email" placeholder="you@example.com" required autocomplete="email">
                             </div>
                             <div class="form-group">
-                                <input type="email" id="reg-email" placeholder="Email" required>
+                                <label for="reg-password" style="font-size:0.85rem;color:#555;">Password</label>
+                                <input type="password" id="reg-password" placeholder="8+ chars, upper, lower, number, symbol" required autocomplete="new-password">
                             </div>
                             <div class="form-group">
-                                <input type="password" id="reg-password" placeholder="Password" required>
+                                <input type="text" id="reg-firstname" placeholder="First Name" autocomplete="given-name">
                             </div>
                             <div class="form-group">
-                                <input type="text" id="reg-firstname" placeholder="First Name">
+                                <input type="text" id="reg-lastname" placeholder="Last Name" autocomplete="family-name">
                             </div>
                             <div class="form-group">
-                                <input type="text" id="reg-lastname" placeholder="Last Name">
+                                <input type="tel" id="reg-phone" placeholder="Phone Number" autocomplete="tel">
                             </div>
-                            <div class="form-group">
-                                <input type="tel" id="reg-phone" placeholder="Phone Number">
-                            </div>
+                            <input type="hidden" id="reg-username" value="">
                             <button type="submit" class="btn-primary">Register</button>
                         </form>
                     </div>
@@ -711,18 +727,34 @@ class ERWaitTimeApp {
                         <h3>Login to Account</h3>
                         <form id="loginForm">
                             <div class="form-group">
-                                <input type="text" id="login-username" placeholder="Username" required>
+                                <input type="text" id="login-username" placeholder="Email or Username" required>
                             </div>
                             <div class="form-group">
                                 <input type="password" id="login-password" placeholder="Password" required>
                             </div>
                             <button type="submit" class="btn-primary">Login</button>
                         </form>
+                        <p style="text-align:center;margin-top:1rem;font-size:0.9rem;">
+                            <a href="#" id="goto-forgot" style="color:#667eea;">Forgot password?</a>
+                        </p>
+                    </div>
+
+                    <!-- Forgot Password Form -->
+                    <div id="forgot-form" class="auth-form">
+                        <h3>Reset Password</h3>
+                        <p style="color:#666;font-size:0.9rem;text-align:center;">Enter your email. We will send a reset link if an account exists.</p>
+                        <form id="forgotForm">
+                            <div class="form-group">
+                                <input type="email" id="forgot-email" placeholder="Email" required>
+                            </div>
+                            <button type="submit" class="btn-primary">Send Reset Link</button>
+                        </form>
                     </div>
                 </div>
 
                 <div class="auth-footer">
                     <p>By using this service, you agree to our terms of service and privacy policy.</p>
+                    <p style="margin-top:0.5rem;"><a href="smart-login.html" style="color:#667eea;">Open Smart Login</a></p>
                 </div>
             </div>
         `;
@@ -735,13 +767,18 @@ class ERWaitTimeApp {
                 top: 0;
                 left: 0;
                 width: 100%;
-                height: 100%;
+                min-height: 100vh;
+                min-height: 100dvh;
                 background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 z-index: 9999;
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                overflow-y: auto;
+                overflow-x: hidden;
+                padding: max(1rem, env(safe-area-inset-top, 0px)) max(1rem, env(safe-area-inset-right, 0px)) max(1rem, env(safe-area-inset-bottom, 0px)) max(1rem, env(safe-area-inset-left, 0px));
+                -webkit-overflow-scrolling: touch;
             }
             
             .auth-container {
@@ -750,8 +787,8 @@ class ERWaitTimeApp {
                 padding: 2rem;
                 box-shadow: 0 20px 40px rgba(0,0,0,0.1);
                 width: 100%;
-                max-width: 400px;
-                margin: 1rem;
+                max-width: min(400px, 100%);
+                margin: auto;
             }
             
             .auth-header {
@@ -825,9 +862,10 @@ class ERWaitTimeApp {
                 padding: 0.75rem;
                 border: 1px solid #ddd;
                 border-radius: 6px;
-                font-size: 1rem;
+                font-size: 16px;
                 transition: border-color 0.3s ease;
                 box-sizing: border-box;
+                min-height: 44px;
             }
             
             .form-group input:focus,
@@ -849,6 +887,8 @@ class ERWaitTimeApp {
                 cursor: pointer;
                 transition: background-color 0.3s ease;
                 margin-top: 1rem;
+                min-height: 44px;
+                touch-action: manipulation;
             }
             
             .btn-primary:hover {
@@ -864,6 +904,43 @@ class ERWaitTimeApp {
                 color: #999;
                 font-size: 0.8rem;
                 margin: 0;
+            }
+
+            @media (max-width: 767.98px) {
+                #auth-screen {
+                    align-items: flex-start;
+                    justify-content: flex-start;
+                }
+
+                .auth-container {
+                    padding: 1.25rem;
+                    border-radius: 10px;
+                    max-width: 100%;
+                }
+
+                .auth-header {
+                    margin-bottom: 1.25rem;
+                }
+
+                .auth-header h1 {
+                    font-size: clamp(1.45rem, 8vw, 1.8rem);
+                }
+
+                .auth-form h3 {
+                    margin-bottom: 1rem;
+                    font-size: 1.25rem;
+                }
+            }
+
+            @media (max-height: 720px) {
+                #auth-screen {
+                    align-items: flex-start;
+                }
+
+                .auth-container {
+                    margin-top: 0;
+                    margin-bottom: 0;
+                }
             }
         `;
 
@@ -909,6 +986,22 @@ class ERWaitTimeApp {
             e.preventDefault();
             await this.handleLogin();
         });
+
+        const forgotForm = document.getElementById('forgotForm');
+        if (forgotForm) {
+            forgotForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await this.handleForgotPassword();
+            });
+        }
+
+        const gotoForgot = document.getElementById('goto-forgot');
+        if (gotoForgot) {
+            gotoForgot.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.querySelector('.auth-tab[data-tab="forgot"]')?.click();
+            });
+        }
     }
 
     /**
@@ -916,30 +1009,24 @@ class ERWaitTimeApp {
      */
     async handleRegistration() {
         try {
-            const userData = {
-                username: document.getElementById('reg-username').value,
-                email: document.getElementById('reg-email').value,
+            const first = document.getElementById('reg-firstname').value.trim();
+            const last = document.getElementById('reg-lastname').value.trim();
+            const email = document.getElementById('reg-email').value.trim();
+            const usernameFromEmail = email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 30);
+            const result = await window.AuthService.registerAccount({
+                username: usernameFromEmail,
+                email,
                 password: document.getElementById('reg-password').value,
                 role: document.getElementById('reg-role').value,
-                first_name: document.getElementById('reg-firstname').value,
-                last_name: document.getElementById('reg-lastname').value,
-                phone: document.getElementById('reg-phone').value
-            };
-
-            const response = await fetch(`${this.config.apiBaseUrl}/auth/register/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(userData)
+                first_name: first,
+                last_name: last,
+                full_name: [first, last].filter(Boolean).join(' '),
+                phone: document.getElementById('reg-phone').value.trim(),
             });
 
-            const result = await response.json();
-
-            if (result.status === 'success') {
+            if (result.success) {
                 this.showNotification('Registration successful! Please login.', 'success');
-                // Switch to login tab
-                document.querySelector('[data-tab="login"]').click();
+                document.querySelector('.auth-tab[data-tab="login"]')?.click();
             } else {
                 this.showNotification('Registration failed: ' + result.message, 'danger');
             }
@@ -953,38 +1040,31 @@ class ERWaitTimeApp {
      */
     async handleLogin() {
         try {
-            const loginData = {
-                username: document.getElementById('login-username').value,
-                password: document.getElementById('login-password').value
-            };
-
-            const response = await fetch(`${this.config.apiBaseUrl}/auth/login/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(loginData)
+            const identifier = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value;
+            const result = await window.AuthService.login({
+                email: identifier.includes('@') ? identifier : undefined,
+                username: identifier.includes('@') ? undefined : identifier,
+                password,
             });
 
-            const result = await response.json();
+            if (result.success) {
+                this.setCurrentUser(result.user);
 
-            if (result.status === 'success') {
-                // Store user data
-                this.setCurrentUser(result.data);
-                
-                // Remove auth screen
                 const authScreen = document.getElementById('auth-screen');
-                if (authScreen) {
-                    authScreen.remove();
+                if (authScreen) authScreen.remove();
+
+                const navigation = document.querySelector('.navigation') || document.querySelector('.navbar');
+                if (navigation) navigation.style.display = '';
+
+                const mainTabContent = document.getElementById('tab-content');
+                if (mainTabContent) mainTabContent.style.display = '';
+
+                if (result.user.role === 'admin') {
+                    window.location.href = 'admin-panel.html';
+                    return;
                 }
 
-                // Show navigation
-                const navigation = document.querySelector('.navigation');
-                if (navigation) {
-                    navigation.style.display = 'flex';
-                }
-
-                // Initialize the app for logged-in user
                 await this.initializeComponents();
                 this.setupEventListeners();
                 await this.loadTab(this.currentTab);
@@ -995,6 +1075,20 @@ class ERWaitTimeApp {
             }
         } catch (error) {
             this.showNotification('Login error: ' + error.message, 'danger');
+        }
+    }
+
+    async handleForgotPassword() {
+        try {
+            const email = document.getElementById('forgot-email').value.trim();
+            const result = await window.AuthService.requestPasswordReset(email);
+            if (result.success) {
+                this.showNotification(result.message || 'Check your email for a reset link.', 'success');
+            } else {
+                this.showNotification(result.message || 'Could not start password reset.', 'danger');
+            }
+        } catch (error) {
+            this.showNotification('Password reset error: ' + error.message, 'danger');
         }
     }
 }

@@ -1,0 +1,123 @@
+<!-- Privacy Policy -->
+<div class="page-header">
+    <div class="container">
+        <h1 class="page-title">
+            <i class="fas fa-user-shield me-3"></i>Privacy Policy
+        </h1>
+        <p class="page-subtitle">ER Wait Time — Transparent information on how we handle your data</p>
+    </div>
+</div>
+
+<div class="container">
+    <div class="card mb-4">
+        <div class="card-body">
+            <p class="mb-2"><strong>Last Updated:</strong> <span id="privacy-last-updated">September 24, 2025</span></p>
+            <p>
+                This Privacy Policy explains how the ER Wait Time application (the "App") collects, uses, 
+                and protects information when you use our services. The App consists of a browser-based 
+                frontend and a Django AI backend accessible via the <code>/api</code> endpoints.
+            </p>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header"><i class="fas fa-database me-2"></i>Information We Collect</div>
+        <div class="card-body">
+            <ul class="mb-0">
+                <li class="mb-2"><strong>Geolocation</strong>: With your permission, the App requests your approximate location to find nearby hospitals and calculate distance/ETA. Geolocation is optional and can be denied; in that case, a default region is used.</li>
+                <li class="mb-2"><strong>Usage Data</strong>: Basic diagnostic logs (e.g., API timing, success/error codes) to improve reliability. We do not collect keystrokes or screen content.</li>
+                <li class="mb-2"><strong>Account and Authentication</strong>: If you register or log in, we process your login credentials via <code>/api/auth/login/</code> and <code>/api/auth/register/</code>. Passwords are never stored in the frontend.</li>
+                <li class="mb-2"><strong>Hospital Contributions</strong>: When you submit ER wait times and feedback, we process: hospital ID (UUID), wait time, severity, free‑text notes, and category ratings (staff, cleanliness, waiting area, communication, overall).</li>
+                <li class="mb-2"><strong>Chat Content</strong>: Messages you send to the AI assistant via <code>/api/chat/</code> are processed to provide responses. Avoid sharing sensitive personal health information unless necessary.</li>
+                <li class="mb-0"><strong>Cookies/Local Storage</strong>: We may use essential cookies or local storage to remember session state, preferences, and security tokens (if applicable).</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header"><i class="fas fa-exchange-alt me-2"></i>How We Use Information</div>
+        <div class="card-body">
+            <ul class="mb-0">
+                <li class="mb-2">Provide and improve core features such as hospital search, directions, ER wait time predictions, and feedback aggregation.</li>
+                <li class="mb-2">Generate AI‑assisted insights like smart wait time suggestions via <code>/api/hospitals/&lt;uuid&gt;/smart-wait-time/</code>.</li>
+                <li class="mb-2">Ensure service integrity and security (rate limiting, abuse prevention, debugging).</li>
+                <li class="mb-0">Comply with legal obligations and enforce our terms.</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header"><i class="fas fa-lock me-2"></i>Data Security</div>
+        <div class="card-body">
+            <p class="mb-0">
+                We use HTTPS for API communication and apply server‑side safeguards to protect data in transit and at rest. 
+                However, no system is completely secure; submit only information you are comfortable sharing.
+            </p>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header"><i class="fas fa-user-check me-2"></i>Your Choices & Rights</div>
+        <div class="card-body">
+            <ul class="mb-0">
+                <li class="mb-2"><strong>Location Access</strong>: You can allow or deny geolocation at any time through your browser settings.</li>
+                <li class="mb-2"><strong>Account</strong>: You may request access, correction, or deletion of your account data (where applicable).</li>
+                <li class="mb-0"><strong>Opt‑Out</strong>: You may opt out of submitting feedback or chat content; the App will continue to function with reduced personalization.</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header"><i class="fas fa-share-alt me-2"></i>Sharing & Disclosure</div>
+        <div class="card-body">
+            <p class="mb-0">
+                We do not sell personal information. We may share data with service providers solely to operate the App (e.g., hosting, security, analytics) under contractual obligations. We may disclose information if required by law or to protect rights, property, or safety.
+            </p>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header"><i class="fas fa-clock me-2"></i>Retention</div>
+        <div class="card-body">
+            <p class="mb-0">
+                We retain information only as long as necessary for the purposes described above or as required by law. Aggregated, de‑identified statistics may be kept longer for service analytics.
+            </p>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header"><i class="fas fa-child me-2"></i>Children’s Privacy</div>
+        <div class="card-body">
+            <p class="mb-0">
+                The App is not intended for children under the age of 13. If you believe we have collected information from a child, please contact us so we can take appropriate action.
+            </p>
+        </div>
+    </div>
+
+    <div class="card mb-5">
+        <div class="card-header"><i class="fas fa-envelope me-2"></i>Contact</div>
+        <div class="card-body">
+            <p class="mb-2">If you have questions about this Privacy Policy or your data, contact us:</p>
+            <ul class="mb-0">
+                <li>Email: <a href="mailto:zub165@yahoo.com">zub165@yahoo.com</a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Optionally update the Last Updated date from a central config in the future
+    (function(){
+        const el = document.getElementById('privacy-last-updated');
+        if (!el) return;
+        // Keep the static date unless overridden by a global app config
+        if (window.app && typeof window.app.getPrivacyLastUpdated === 'function') {
+            try {
+                const dt = window.app.getPrivacyLastUpdated();
+                if (dt) el.textContent = dt;
+            } catch (e) {}
+        }
+    })();
+</script>
+
+

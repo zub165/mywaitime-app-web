@@ -6,7 +6,9 @@
 class SmartLoginSystem {
     constructor() {
         this.currentRole = 'patient';
-        this.apiBaseUrl = 'https://api.mywaitime.com/api';
+        const host = (typeof location !== 'undefined' && location.hostname) || '';
+        const productionApi = host.includes('mywaitime.com') || host.includes('mywaittime.com') || host.includes('github.io');
+        this.apiBaseUrl = productionApi ? 'https://api.mywaitime.com/api' : '/api';
         this.isProcessing = false;
         this.init();
     }
@@ -39,6 +41,14 @@ class SmartLoginSystem {
             e.preventDefault();
             this.handleSubmit();
         });
+
+        const forgotBtn = document.getElementById('forgotPasswordBtn');
+        if (forgotBtn) {
+            forgotBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.handleForgotPassword();
+            });
+        }
 
         // Auto-fill on typing
         document.getElementById('email').addEventListener('input', () => {
@@ -290,7 +300,7 @@ class SmartLoginSystem {
                 throw new Error('Form validation failed');
             }
 
-            // Check if passwords match
+            // Check if passwords match (registration path)
             if (formData.password !== formData.confirmPassword) {
                 throw new Error('Passwords do not match');
             }
@@ -311,6 +321,20 @@ class SmartLoginSystem {
             this.isProcessing = false;
             this.showLoading(false);
         }
+    }
+
+    async handleForgotPassword() {
+        const email = (document.getElementById('email')?.value || '').trim();
+        if (!email) {
+            this.showNotification('❌ Enter your email first', 'error');
+            return;
+        }
+        if (!window.AuthService) {
+            this.showNotification('❌ Auth service not loaded', 'error');
+            return;
+        }
+        const result = await window.AuthService.requestPasswordReset(email);
+        this.showNotification(result.success ? `✅ ${result.message}` : `❌ ${result.message}`, result.success ? 'success' : 'error');
     }
 
     getFormData() {
@@ -350,105 +374,90 @@ class SmartLoginSystem {
 
     async authenticateUser(data) {
         try {
-            // First try to login
-            const loginResponse = await this.attemptLogin(data.email, data.password);
-            
+            if (!window.AuthService) {
+                return { success: false, message: 'Auth service not loaded' };
+            }
+
+            if (data.role === 'admin') {
+                // Admin: login only (no self-registration)
+                const loginResponse = await window.AuthService.login({
+                    email: data.email,
+                    password: data.password,
+                });
+                if (loginResponse.success) {
+                    return { success: true, user: loginResponse.user, isNewUser: false };
+                }
+                return {
+                    success: false,
+                    message: loginResponse.message || 'Admin login failed. Admins cannot self-register.',
+                };
+            }
+
+            // Remember intended role before login (backend may return user until group is set)
+            window.AuthService.rememberRoleForEmail(data.email, data.role === 'patient' ? 'user' : data.role);
+
+            const loginResponse = await window.AuthService.login({
+                email: data.email,
+                password: data.password,
+            });
+
             if (loginResponse.success) {
-                return {
-                    success: true,
-                    user: loginResponse.user,
-                    isNewUser: false
-                };
+                return { success: true, user: loginResponse.user, isNewUser: false };
             }
 
-            // If login fails, try registration
-            const registerResponse = await this.attemptRegistration(data);
-            
-            if (registerResponse.success) {
-                // Auto-login after registration
-                const autoLoginResponse = await this.attemptLogin(data.email, data.password);
-                return {
-                    success: true,
-                    user: autoLoginResponse.user,
-                    isNewUser: true
-                };
+            // Login failed → register, then auto-login
+            const registerResponse = await window.AuthService.registerAccount({
+                email: data.email,
+                password: data.password,
+                full_name: data.fullName,
+                role: data.role === 'patient' ? 'user' : data.role,
+                phone: data.phone,
+                license: data.license,
+                specialty: data.specialty,
+            });
+
+            if (!registerResponse.success) {
+                return { success: false, message: registerResponse.message || 'Registration failed' };
             }
 
-            return { success: false, message: 'Authentication failed' };
+            const autoLogin = await window.AuthService.login({
+                email: data.email,
+                password: data.password,
+            });
 
+            if (autoLogin.success) {
+                // Ensure doctor role sticks even if backend still says user
+                if (data.role === 'doctor' && autoLogin.user.role === 'user') {
+                    autoLogin.user = window.AuthService.saveSession({ ...autoLogin.user, role: 'doctor' });
+                }
+                return { success: true, user: autoLogin.user, isNewUser: true };
+            }
+
+            return { success: false, message: autoLogin.message || 'Registered but login failed' };
         } catch (error) {
             console.error('Authentication error:', error);
             return { success: false, message: error.message };
         }
     }
 
-    async attemptLogin(email, password) {
-        const response = await fetch(`${this.apiBaseUrl}/auth/login/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                email: email,
-                password: password
-            })
-        });
-
-        const result = await response.json();
-        return result;
-    }
-
-    async attemptRegistration(data) {
-        const payload = {
-            email: data.email,
-            password: data.password,
-            full_name: data.fullName,
-            role: data.role
-        };
-
-        if (data.phone) payload.phone = data.phone;
-        if (data.license) payload.license = data.license;
-        if (data.specialty) payload.specialty = data.specialty;
-
-        const response = await fetch(`${this.apiBaseUrl}/auth/register/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(payload)
-        });
-
-        const result = await response.json();
-        return result;
-    }
-
     handleSuccessfulAuth(result) {
-        // Save user data to localStorage
-        localStorage.setItem('user', JSON.stringify(result.user));
-        localStorage.setItem('userRole', result.user.role);
-        localStorage.setItem('isAuthenticated', 'true');
+        if (window.AuthService) {
+            window.AuthService.saveSession(result.user);
+        }
 
-        // Show success message
-        const message = result.isNewUser ? 
+        const message = result.isNewUser ?
             `🎉 Welcome ${result.user.full_name}! Registration successful.` :
             `👋 Welcome back ${result.user.full_name}!`;
-        
+
         this.showNotification(message, 'success');
 
-        // Redirect based on role and new user status
         setTimeout(() => {
-            this.redirectUser(result.user, result.isNewUser);
-        }, 2000);
-    }
-
-    redirectUser(user, isNewUser) {
-        if (user.role === 'admin') {
-            window.location.href = 'admin-panel.html';
-        } else if (isNewUser && user.role === 'patient') {
-            window.location.href = 'index.html?tab=registration&new_user=true';
-        } else {
-            window.location.href = 'index.html?tab=er-wait';
-        }
+            if (window.AuthService) {
+                window.AuthService.redirectAfterAuth(result.user, { isNewUser: result.isNewUser });
+            } else {
+                window.location.href = 'index.html#er-wait';
+            }
+        }, 1500);
     }
 
     showLoading(show) {

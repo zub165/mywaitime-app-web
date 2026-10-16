@@ -1071,3 +1071,293 @@ body {
         margin-bottom: 1rem;
     }
 }
+
+/* Device compatibility hardening: iPhone, iPad, desktop */
+html {
+    width: 100%;
+    min-height: 100%;
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+body {
+    width: 100%;
+    overflow-x: hidden;
+    padding-top: calc(80px + env(safe-area-inset-top, 0px));
+}
+
+img,
+svg,
+canvas,
+video,
+iframe {
+    max-width: 100%;
+}
+
+.navbar {
+    min-height: 80px;
+    height: auto;
+    padding-top: max(0.5rem, env(safe-area-inset-top, 0px));
+}
+
+.navbar .container-fluid {
+    gap: 0.5rem;
+}
+
+.navbar-collapse {
+    max-width: 100%;
+}
+
+.navbar-text {
+    min-width: 0;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+#user-info {
+    max-width: 18rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.main-content {
+    min-height: calc(100vh - 80px);
+    padding-top: 1.25rem;
+}
+
+.main-content > .container-fluid {
+    width: 100%;
+    padding-left: clamp(0.75rem, 2vw, 1.5rem);
+    padding-right: clamp(0.75rem, 2vw, 1.5rem);
+}
+
+.tab-content {
+    width: 100%;
+    max-width: 100%;
+    overflow: visible;
+}
+
+.card-header,
+.modal-header,
+.modal-footer {
+    gap: 0.75rem;
+}
+
+.card-header.d-flex,
+.modal-footer {
+    flex-wrap: wrap;
+}
+
+.btn-group {
+    flex-wrap: wrap;
+}
+
+.row {
+    min-width: 0;
+}
+
+[class*="col-"] {
+    min-width: 0;
+}
+
+.table-responsive,
+.records-table,
+.hospital-list,
+#wait-times-container,
+#hospitals-list,
+#records-tab-content {
+    max-width: 100%;
+}
+
+/* iPad/tablet: keep content comfortable without forcing desktop density */
+@media (min-width: 768px) and (max-width: 1199.98px) {
+    body {
+        padding-top: calc(76px + env(safe-area-inset-top, 0px));
+    }
+
+    .navbar {
+        min-height: 76px;
+    }
+
+    .navbar-brand {
+        font-size: 1.25rem !important;
+    }
+
+    .nav-link {
+        padding: 0.65rem 0.75rem !important;
+        font-size: 0.92rem;
+    }
+
+    .tab-content {
+        padding: 1.5rem;
+        margin: 1rem 0;
+    }
+
+    .page-title {
+        font-size: clamp(2rem, 4vw, 2.6rem);
+    }
+}
+
+/* Phones: collapsed menu, one-column content, safe touch targets */
+@media (max-width: 767.98px) {
+    body {
+        padding-top: calc(64px + env(safe-area-inset-top, 0px));
+    }
+
+    .navbar {
+        min-height: 64px;
+        padding-left: max(0.75rem, env(safe-area-inset-left, 0px));
+        padding-right: max(0.75rem, env(safe-area-inset-right, 0px));
+    }
+
+    .navbar-brand {
+        max-width: calc(100vw - 5rem);
+        font-size: 1.05rem !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .navbar-collapse {
+        margin-top: 0.75rem;
+        padding: 0.75rem;
+        border-radius: var(--border-radius-lg);
+        background: rgba(30, 41, 59, 0.96);
+        box-shadow: var(--shadow-xl);
+        max-height: calc(100vh - 76px - env(safe-area-inset-top, 0px));
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .navbar-nav {
+        padding-top: 0;
+    }
+
+    .navbar-text {
+        width: 100%;
+        align-items: flex-start !important;
+    }
+
+    .navbar-text > div,
+    .navbar-text .d-flex {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    #user-info {
+        max-width: calc(100vw - 9rem);
+    }
+
+    .main-content {
+        padding: 0.75rem 0 1.5rem;
+        min-height: calc(100vh - 64px);
+    }
+
+    .main-content > .container-fluid {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+    }
+
+    .tab-content {
+        padding: 1rem;
+        margin: 0;
+        border-radius: var(--border-radius-lg);
+    }
+
+    .page-header {
+        padding: 1.5rem 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .page-title,
+    .er-wait-container h2 {
+        font-size: clamp(1.45rem, 7vw, 2rem);
+        line-height: 1.15;
+    }
+
+    .page-subtitle {
+        font-size: 0.95rem;
+    }
+
+    .card-body,
+    .registration-form,
+    .filter-section {
+        padding: 1rem;
+    }
+
+    .card-header.d-flex {
+        align-items: flex-start !important;
+    }
+
+    .card-header .btn-group,
+    .card-header > div:last-child {
+        width: 100%;
+    }
+
+    .card-header .btn-group .btn,
+    .modal-footer .btn,
+    .hospital-actions .btn,
+    .location-buttons .btn {
+        flex: 1 1 100%;
+    }
+
+    .d-flex.gap-2,
+    .d-flex.gap-3 {
+        flex-wrap: wrap;
+    }
+
+    .stats-overview.row > [class*="col-"],
+    .stats-grid {
+        width: 100%;
+    }
+
+    .wait-time-card {
+        padding: 1rem;
+    }
+
+    .wait-time-number {
+        font-size: clamp(1.8rem, 10vw, 2.25rem);
+    }
+
+    .chat-container {
+        height: min(68vh, 560px);
+    }
+
+    .message-bubble {
+        max-width: 88%;
+        word-break: break-word;
+    }
+
+    .modal-dialog {
+        margin: 0.75rem;
+        max-width: calc(100% - 1.5rem);
+    }
+
+    .modal-content {
+        max-height: calc(100vh - 1.5rem);
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* Small iPhones */
+@media (max-width: 390px) {
+    .main-content > .container-fluid,
+    .tab-content {
+        padding-left: 0.65rem;
+        padding-right: 0.65rem;
+    }
+
+    .btn {
+        width: 100%;
+    }
+
+    .navbar-brand span {
+        max-width: 9.5rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}

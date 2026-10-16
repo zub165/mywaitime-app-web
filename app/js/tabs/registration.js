@@ -775,7 +775,8 @@ class RegistrationManager {
             this.updateProgress();
             
             // Call Django AI API
-            const response = await fetch(`https://api.mywaitime.com/ai/medication/search/?name=${encodeURIComponent(medicationName)}`);
+            const response = await fetch(`/api/ai/medication/search/?name=${encodeURIComponent(medicationName)}`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const data = await response.json();
             
             if (data.status === 'success' && data.data.results.length > 0) {
@@ -868,7 +869,7 @@ class RegistrationManager {
             }
             
             // Call Django AI API
-            const response = await fetch('https://api.mywaitime.com/ai/symptoms/analyze/', {
+            const response = await fetch('/api/ai/symptoms/analyze/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -879,7 +880,7 @@ class RegistrationManager {
                     patient_gender: gender
                 })
             });
-            
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const data = await response.json();
             
             if (data.status === 'success') {
@@ -959,6 +960,13 @@ class RegistrationManager {
     showAIHelp() {
         if (window.app) {
             window.app.showNotification('AI Assistant: I can help you with medication lookup, symptom analysis, and ICD-10 code validation. Just ask!', 'info');
+        }
+    }
+
+    destroy() {
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+            this.timerInterval = null;
         }
     }
 

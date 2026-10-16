@@ -110,13 +110,9 @@ class DirectionsManager {
 
             // Get directions from Django API
             if (window.djangoAPI) {
-                const response = await window.djangoAPI.makeRequest('/directions/', {
-                    method: 'GET',
-                    params: {
-                        origin: origin,
-                        destination: destination,
-                        travel_mode: travelMode
-                    }
+                const qs = new URLSearchParams({ origin, destination, travel_mode: travelMode });
+                const response = await window.djangoAPI.makeRequest(`/directions/?${qs.toString()}`, {
+                    method: 'GET'
                 });
                 this.directions = response.directions || response.routes;
             } else {

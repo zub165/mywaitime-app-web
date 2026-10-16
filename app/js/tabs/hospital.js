@@ -10,6 +10,69 @@ class HospitalManager {
         this.hospitals = [];
         this.currentLocation = null;
         this.searchRadius = 25;
+        this.listSortMode = 'smart';
+    }
+
+    findHospital(hospitalId) {
+        const key = String(hospitalId);
+        return this.hospitals.find(h => String(h.id) === key);
+    }
+
+    mapDjangoHospital(hospital) {
+        const api = window.djangoAPI;
+        const facilityType = hospital.facility_type || hospital.hospital_type || hospital.type || 'other';
+        const facilitySortRank = hospital.facility_sort_rank ??
+            (api ? api.facilitySortRank(facilityType) : 7);
+        return {
+            id: hospital.id,
+            name: hospital.name,
+            address: hospital.address ||
+                `${hospital.city || ''}, ${hospital.state || ''}`.trim(),
+            phone: hospital.phone,
+            type: facilityType,
+            facility_type: facilityType,
+            facility_sort_rank: facilitySortRank,
+            is_open: hospital.is_open,
+            distance: hospital.distance,
+            distance_km: hospital.distance_km,
+            wait_time: hospital.wait_time ?? hospital.wait_time_prediction ?? 30,
+            er_time_minutes: hospital.er_time_minutes,
+            severity: hospital.severity || 'medium',
+            lat: hospital.lat ?? hospital.latitude,
+            lng: hospital.lng ?? hospital.longitude,
+            specialties: hospital.specialties || ['General Medicine', 'Emergency Care'],
+            services: hospital.services || ['Emergency Room', 'ICU', 'Surgery'],
+            ai_rating: hospital.ai_rating,
+            performance_score: hospital.performance_score ?? hospital.overall_performance_score,
+            category_scores: hospital.category_scores || {},
+        };
+    }
+
+    hasFacilityFilter() {
+        const el = document.getElementById('hospital-type');
+        return Boolean(el && el.value);
+    }
+
+    applyListSort(mode) {
+        this.listSortMode = mode || 'smart';
+        const api = window.djangoAPI;
+        if (!api || !this.hospitals.length) {
+            this.updateHospitalList();
+            this.updateMapMarkers();
+            return;
+        }
+        const mapped = this.hospitals.map(h => this.mapDjangoHospital(h));
+        const sorted = api.sortNearbyList(mapped, this.listSortMode, this.hasFacilityFilter());
+        this.hospitals = sorted;
+        this.updateHospitalList();
+        this.updateMapMarkers();
+    }
+
+    setSortButtonActive(mode) {
+        document.querySelectorAll('[data-sort]').forEach(btn => {
+            const active = btn.getAttribute('data-sort') === mode;
+            btn.classList.toggle('active', active);
+        });
     }
 
     /**
@@ -154,47 +217,32 @@ class HospitalManager {
             // Show loading state
             this.showLoading();
 
-            // Get hospitals from Django API
             if (window.djangoAPI) {
                 try {
-                    const response = await window.djangoAPI.makeRequest('/hospitals/');
-                    if (response.status === 'success' && response.data) {
-                        this.hospitals = response.data.map(hospital => ({
-                            id: hospital.id,
-                            name: hospital.name,
-                            address: `${hospital.address}, ${hospital.city}, ${hospital.state}`,
-                            phone: hospital.phone,
-                            type: 'general',
-                            distance: this.calculateDistance(
-                                this.currentLocation.lat, 
-                                this.currentLocation.lng,
-                                parseFloat(hospital.latitude),
-                                parseFloat(hospital.longitude)
-                            ),
-                            wait_time: hospital.wait_time_prediction || 30,
-                            severity: hospital.capacity_status === 'low' ? 'low' : 'medium',
-                            lat: parseFloat(hospital.latitude),
-                            lng: parseFloat(hospital.longitude),
-                            specialties: hospital.specialties || ['General Medicine', 'Emergency Care'],
-                            services: ['Emergency Room', 'ICU', 'Surgery'],
-                            ai_rating: hospital.ai_rating,
-                            performance_score: hospital.overall_performance_score
-                        }));
-                    } else {
-                        this.loadMockData();
-                    }
+                    const raw = await window.djangoAPI.getHospitalsByLocation(
+                        this.currentLocation.lat,
+                        this.currentLocation.lng,
+                        this.searchRadius,
+                        'smart'
+                    );
+                    const withDistance = window.djangoAPI.addDistancesToHospitals(
+                        raw,
+                        this.currentLocation.lat,
+                        this.currentLocation.lng,
+                        { preserveOrder: true }
+                    );
+                    this.hospitals = withDistance.map(h => this.mapDjangoHospital(h));
+                    this.applyListSort(this.listSortMode);
                 } catch (error) {
                     console.error('Failed to fetch hospitals from Django API:', error);
                     this.loadMockData();
+                    this.applyListSort(this.listSortMode);
                 }
             } else {
-                // Mock data for development
                 this.loadMockData();
+                this.applyListSort(this.listSortMode);
             }
 
-            // Update display
-            this.updateHospitalList();
-            this.updateMapMarkers();
             this.updateHospitalCount();
 
         } catch (error) {
@@ -215,7 +263,10 @@ class HospitalManager {
                 name: 'Tampa General Hospital',
                 address: '1 Tampa General Cir, Tampa, FL 33606',
                 phone: '(813) 844-7000',
-                type: 'general',
+                type: 'hospital',
+                facility_type: 'hospital',
+                facility_sort_rank: 2,
+                is_open: true,
                 distance: 2.3,
                 wait_time: 45,
                 severity: 'medium',
@@ -229,7 +280,10 @@ class HospitalManager {
                 name: 'St. Joseph\'s Hospital',
                 address: '3001 W Dr Martin Luther King Jr Blvd, Tampa, FL 33607',
                 phone: '(813) 870-4000',
-                type: 'general',
+                type: 'emergency_room',
+                facility_type: 'emergency_room',
+                facility_sort_rank: 1,
+                is_open: true,
                 distance: 4.1,
                 wait_time: 30,
                 severity: 'low',
@@ -243,7 +297,10 @@ class HospitalManager {
                 name: 'AdventHealth Tampa',
                 address: '3100 E Fletcher Ave, Tampa, FL 33613',
                 phone: '(813) 615-7000',
-                type: 'general',
+                type: 'urgent_care',
+                facility_type: 'urgent_care',
+                facility_sort_rank: 3,
+                is_open: true,
                 distance: 6.7,
                 wait_time: 90,
                 severity: 'high',
@@ -320,14 +377,17 @@ class HospitalManager {
                         </div>
                         
                         <div class="hospital-actions">
-                            <button class="btn btn-primary btn-sm" onclick="hospitalManager.showHospitalDetails(${hospital.id})">
+                            <button class="btn btn-primary btn-sm" onclick="hospitalManager.showHospitalDetails('${hospital.id}')">
                                 <i class="fas fa-info-circle me-1"></i>Details
                             </button>
-                            <button class="btn btn-success btn-sm" onclick="hospitalManager.getDirections(${hospital.id})">
+                            <button class="btn btn-success btn-sm" onclick="hospitalManager.getDirections('${hospital.id}')">
                                 <i class="fas fa-directions me-1"></i>Directions
                             </button>
-                            <button class="btn btn-info btn-sm" onclick="hospitalManager.callHospital(${hospital.id})">
+                            <button class="btn btn-info btn-sm" onclick="hospitalManager.callHospital('${hospital.id}')">
                                 <i class="fas fa-phone me-1"></i>Call
+                            </button>
+                            <button class="btn btn-warning btn-sm" onclick="hospitalManager.openPerformanceModal('${hospital.id}')">
+                                <i class="fas fa-edit me-1"></i>Edit Performance
                             </button>
                         </div>
                     </div>
@@ -435,7 +495,7 @@ class HospitalManager {
      * Show hospital details modal
      */
     showHospitalDetails(hospitalId) {
-        const hospital = this.hospitals.find(h => h.id === hospitalId);
+        const hospital = this.findHospital(hospitalId);
         if (!hospital) return;
 
         // Update modal title
@@ -489,10 +549,186 @@ class HospitalManager {
     }
 
     /**
+     * Open editable performance modal
+     */
+    async openPerformanceModal(hospitalId) {
+        const hospital = this.findHospital(hospitalId);
+        if (!hospital) return;
+
+        document.getElementById('perf-hospital-name').textContent = hospital.name;
+        const idInput = document.getElementById('perf-hospital-id');
+        const waitInput = document.getElementById('perf-wait-time');
+        const severitySelect = document.getElementById('perf-severity');
+        const notesInput = document.getElementById('perf-notes');
+
+        if (idInput) idInput.value = hospital.id;
+        if (waitInput) waitInput.value = parseInt(hospital.wait_time) || 0;
+        if (severitySelect) severitySelect.value = hospital.severity || 'medium';
+        if (notesInput) notesInput.value = '';
+
+        // Prefill category sliders from existing category_scores if present
+        const scores = hospital.category_scores || {};
+        const setSlider = (id, labelId, val) => {
+            const el = document.getElementById(id);
+            const label = document.getElementById(labelId);
+            if (el) el.value = val || 4;
+            if (label) label.textContent = (val || 4);
+        };
+        setSlider('score-staff', 'label-staff', scores.staff);
+        setSlider('score-cleanliness', 'label-cleanliness', scores.cleanliness);
+        setSlider('score-waiting', 'label-waiting', scores.waiting_area);
+        setSlider('score-communication', 'label-communication', scores.communication);
+        setSlider('score-overall', 'label-overall', scores.overall);
+
+        // Attach change listeners to update labels
+        const attach = (id, labelId) => {
+            const el = document.getElementById(id);
+            const label = document.getElementById(labelId);
+            if (el && label) el.addEventListener('input', () => label.textContent = el.value);
+        };
+        attach('score-staff', 'label-staff');
+        attach('score-cleanliness', 'label-cleanliness');
+        attach('score-waiting', 'label-waiting');
+        attach('score-communication', 'label-communication');
+        attach('score-overall', 'label-overall');
+
+        // Wire save buttons (idempotent handler binding)
+        const saveBtn = document.getElementById('btn-save-performance');
+        if (saveBtn && !saveBtn._bound) {
+            saveBtn.addEventListener('click', () => this.savePerformance());
+            saveBtn._bound = true;
+        }
+        const aiBtn = document.getElementById('btn-ai-suggest');
+        if (aiBtn && !aiBtn._bound) {
+            aiBtn.addEventListener('click', () => this.getSmartSuggestion());
+            aiBtn._bound = true;
+        }
+
+        const modal = new bootstrap.Modal(document.getElementById('hospitalPerformanceModal'));
+        modal.show();
+
+        // Ensure inputs are interactive and focus works
+        this.ensureModalInteractive('hospitalPerformanceModal');
+    }
+
+    /**
+     * Request smart wait time suggestion from backend
+     */
+    async getSmartSuggestion() {
+        const id = document.getElementById('perf-hospital-id')?.value;
+        if (!id || !window.djangoAPI) return;
+        try {
+            const data = await window.djangoAPI.getSmartWaitTime(id);
+            const waitMinutes = parseInt(data?.wait_time_prediction || data?.wait_time || 0);
+            const waitInput = document.getElementById('perf-wait-time');
+            const severitySelect = document.getElementById('perf-severity');
+            if (waitInput) waitInput.value = isNaN(waitMinutes) ? 0 : waitMinutes;
+            if (severitySelect) severitySelect.value = data?.severity || 'medium';
+            if (window.app) window.app.showNotification('Smart wait time applied from AI prediction.', 'info');
+        } catch (e) {
+            console.error('Smart wait time error:', e);
+            if (window.app) window.app.showNotification(`Failed to get smart wait time: ${e.message}`, 'warning');
+        }
+    }
+
+    /**
+     * Save wait time and feedback to backend
+     */
+    async savePerformance() {
+        const id = document.getElementById('perf-hospital-id')?.value;
+        const waitTime = parseInt(document.getElementById('perf-wait-time')?.value || '0', 10);
+        const severity = document.getElementById('perf-severity')?.value || 'medium';
+        const notes = document.getElementById('perf-notes')?.value || '';
+
+        const category_scores = {
+            staff: parseInt(document.getElementById('score-staff')?.value || '4', 10),
+            cleanliness: parseInt(document.getElementById('score-cleanliness')?.value || '4', 10),
+            waiting_area: parseInt(document.getElementById('score-waiting')?.value || '4', 10),
+            communication: parseInt(document.getElementById('score-communication')?.value || '4', 10),
+            overall: parseInt(document.getElementById('score-overall')?.value || '4', 10)
+        };
+
+        if (!id || !window.djangoAPI) return;
+
+        try {
+            // Update wait time (POST+PUT supported by backend)
+            await window.djangoAPI.makeRequest(`/hospitals/${id}/update-wait-time/`, {
+                method: 'PUT',
+                body: JSON.stringify({
+                    wait_time_prediction: waitTime,
+                    severity: severity,
+                    notes: notes
+                })
+            });
+
+            // Submit feedback
+            await window.djangoAPI.submitHospitalFeedback(id, { category_scores, notes });
+
+            // Reflect immediately in list
+            const target = this.findHospital(id);
+            if (target) {
+                target.wait_time = waitTime;
+                target.severity = severity;
+                target.category_scores = category_scores;
+            }
+            this.updateHospitalList();
+            this.updateMapMarkers();
+
+            if (window.app) window.app.showNotification('Saved successfully to backend.', 'success');
+            const modalEl = document.getElementById('hospitalPerformanceModal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+        } catch (e) {
+            console.error('Save performance error:', e);
+            if (window.app) window.app.showNotification(`Save failed: ${e.message}`, 'danger');
+        }
+    }
+
+    /**
+     * Defensive fix for rare Bootstrap modal glitches where inputs don't accept typing
+     * - Removes duplicate backdrops
+     * - Re-enables pointer events on modal
+     * - Re-enables and focuses first input
+     */
+    ensureModalInteractive(modalId) {
+        const modalEl = document.getElementById(modalId);
+        if (!modalEl) return;
+
+        // Remove extra backdrops (keep the last one)
+        const backdrops = Array.from(document.querySelectorAll('.modal-backdrop'));
+        if (backdrops.length > 1) {
+            backdrops.slice(0, backdrops.length - 1).forEach(b => b.parentNode && b.parentNode.removeChild(b));
+        }
+
+        // Re-enable pointer events on modal and its children
+        modalEl.style.pointerEvents = 'auto';
+        modalEl.classList.add('show');
+
+        // Enable all fields in this modal
+        const enableFields = () => {
+            const fields = modalEl.querySelectorAll('input, textarea, select, button');
+            fields.forEach(el => {
+                el.disabled = false;
+                el.style.pointerEvents = 'auto';
+            });
+        };
+        enableFields();
+
+        // Focus first interactive input after a short delay (to wait for animation)
+        setTimeout(() => {
+            enableFields();
+            const firstInput = modalEl.querySelector('input, textarea, select');
+            if (firstInput) {
+                try { firstInput.focus(); firstInput.select && firstInput.select(); } catch (_) {}
+            }
+        }, 60);
+    }
+
+    /**
      * Get directions to hospital
      */
     getDirections(hospitalId) {
-        const hospital = this.hospitals.find(h => h.id === hospitalId);
+        const hospital = this.findHospital(hospitalId);
         if (!hospital) return;
 
         // Navigate to directions tab
@@ -512,7 +748,7 @@ class HospitalManager {
      * Call hospital
      */
     callHospital(hospitalId) {
-        const hospital = this.hospitals.find(h => h.id === hospitalId);
+        const hospital = this.findHospital(hospitalId);
         if (!hospital || !hospital.phone) return;
 
         window.open(`tel:${hospital.phone}`, '_self');
@@ -532,24 +768,41 @@ class HospitalManager {
             // Show loading state
             this.showLoading();
 
-            // Perform search
-            if (window.apiClient) {
+            if (window.djangoAPI && this.currentLocation) {
+                const raw = await window.djangoAPI.searchHospitals(
+                    searchQuery,
+                    this.currentLocation.lat,
+                    this.currentLocation.lng,
+                    radius,
+                    hospitalType || null,
+                    'smart'
+                );
+                const withDistance = window.djangoAPI.addDistancesToHospitals(
+                    raw,
+                    this.currentLocation.lat,
+                    this.currentLocation.lng,
+                    { preserveOrder: true }
+                );
+                this.hospitals = withDistance.map(h => this.mapDjangoHospital(h));
+                this.applyListSort(this.listSortMode);
+            } else if (window.apiClient) {
                 const response = await window.apiClient.searchHospitals(
                     searchQuery,
                     this.currentLocation.lat,
                     this.currentLocation.lng,
-                    radius
+                    radius,
+                    hospitalType || null,
+                    'smart'
                 );
-                
-                this.hospitals = response.hospitals || [];
+                this.hospitals = (response.hospitals || response.data || []).map(h =>
+                    this.mapDjangoHospital(h)
+                );
+                this.applyListSort(this.listSortMode);
             } else {
-                // Filter mock data
                 this.filterMockData(searchQuery, hospitalType);
+                this.applyListSort(this.listSortMode);
             }
 
-            // Update display
-            this.updateHospitalList();
-            this.updateMapMarkers();
             this.updateHospitalCount();
 
         } catch (error) {
@@ -621,6 +874,14 @@ class HospitalManager {
                 }
             });
         }
+
+        document.querySelectorAll('[data-sort]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const mode = btn.getAttribute('data-sort') || 'smart';
+                this.setSortButtonActive(mode);
+                this.applyListSort(mode);
+            });
+        });
     }
 
     /**

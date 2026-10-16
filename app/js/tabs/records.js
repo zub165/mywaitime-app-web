@@ -128,7 +128,16 @@ class RecordsManager {
         try {
             if (window.djangoAPI) {
                 const response = await window.djangoAPI.getPatientRecords(this.currentPatient.id);
-                this.records = response.records || this.records;
+                if (response.records && typeof response.records === 'object') {
+                    this.records = {
+                        visits: response.records.visits || this.records.visits,
+                        diagnoses: response.records.diagnoses || this.records.diagnoses,
+                        medications: response.records.medications || this.records.medications,
+                        labResults: response.records.labResults || this.records.labResults,
+                        imaging: response.records.imaging || this.records.imaging,
+                        procedures: response.records.procedures || this.records.procedures,
+                    };
+                }
                 console.log('Loaded patient records from Django API:', this.records);
             } else {
                 this.loadMockRecords();
