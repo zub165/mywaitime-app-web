@@ -188,6 +188,23 @@ class DjangoAPIClient {
     /**
      * Make HTTP request to Django API
      */
+    getAuthToken() {
+        try {
+            if (window.AuthService && typeof window.AuthService.getSession === 'function') {
+                const session = window.AuthService.getSession();
+                if (session && session.token) return session.token;
+            }
+            const stored = localStorage.getItem('authToken');
+            if (stored) return stored;
+            const raw = localStorage.getItem('er-wait-user') || localStorage.getItem('user');
+            if (raw) {
+                const user = JSON.parse(raw);
+                if (user && user.token) return user.token;
+            }
+        } catch (_) { /* ignore */ }
+        return null;
+    }
+
     async makeRequest(endpoint, options = {}) {
         const url = `${this.baseURL}${endpoint}`;
         const { timeout: optionTimeout, headers: optionHeaders, ...rest } = options;
@@ -195,13 +212,20 @@ class DjangoAPIClient {
         const ms = optionTimeout || this.timeout || 12000;
         const timer = setTimeout(() => controller.abort(), ms);
 
+        const headers = {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            ...(optionHeaders || {}),
+        };
+        // Wait-time updates + feedback require Django Token auth
+        const token = this.getAuthToken();
+        if (token && !headers.Authorization && !headers.authorization) {
+            headers.Authorization = `Token ${token}`;
+        }
+
         const config = {
             method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                Accept: 'application/json',
-                ...(optionHeaders || {}),
-            },
+            headers,
             signal: controller.signal,
             ...rest,
         };
@@ -211,7 +235,18 @@ class DjangoAPIClient {
             const response = await fetch(url, config);
 
             if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                let detail = `${response.status} ${response.statusText}`;
+                try {
+                    const errBody = await response.json();
+                    detail = errBody.message || errBody.detail || detail;
+                    if (response.status === 401) {
+                        throw new Error(detail || 'Please log in again to update wait times.');
+                    }
+                    throw new Error(detail);
+                } catch (parseErr) {
+                    if (parseErr.message && !parseErr.message.startsWith('HTTP')) throw parseErr;
+                    throw new Error(`HTTP ${detail}`);
+                }
             }
 
             const data = await response.json();
@@ -305,20 +340,22 @@ class DjangoAPIClient {
      */
     async updateHospitalWaitTime(hospitalId, waitTime, severity = 'medium', notes = '') {
         try {
+            if (!this.getAuthToken()) {
+                throw new Error('Please log in to update wait times. Your session has no auth token.');
+            }
             const response = await this.makeRequest(`/hospitals/${hospitalId}/update-wait-time/`, {
-                method: 'PUT',
+                method: 'POST',
                 body: JSON.stringify({
-                    wait_time_prediction: waitTime,
+                    wait_time_prediction: Number(waitTime),
                     severity: severity,
-                    notes: notes
-                })
+                    notes: notes || '',
+                }),
             });
             
             if (response.status === 'success') {
-                return response.data;
-            } else {
-                throw new Error(response.message || 'Failed to update wait time');
+                return { status: 'success', data: response.data, message: response.message };
             }
+            throw new Error(response.message || 'Failed to update wait time');
         } catch (error) {
             console.error('Error updating hospital wait time:', error);
             throw error;
@@ -346,21 +383,42 @@ class DjangoAPIClient {
     /**
      * Submit feedback for hospital
      */
+    /**
+     * Map UI review labels to Django /feedback/submit/ required fields:
+     * care_quality, staff_friendliness, cleanliness, wait_time, facility_modernity
+     */
+    normalizeFeedbackPayload(hospitalId, feedbackData = {}) {
+        const scores = feedbackData.category_scores || feedbackData;
+        const num = (v, fallback = 3) => {
+            const n = parseInt(v, 10);
+            return Number.isFinite(n) ? Math.min(5, Math.max(1, n)) : fallback;
+        };
+        return {
+            hospital_id: hospitalId,
+            care_quality: num(scores.care_quality ?? scores.overall ?? scores.communication, 3),
+            staff_friendliness: num(scores.staff_friendliness ?? scores.staff, 3),
+            cleanliness: num(scores.cleanliness, 3),
+            wait_time: num(scores.wait_time ?? scores.waiting_area, 3),
+            facility_modernity: num(scores.facility_modernity ?? scores.overall ?? scores.communication, 3),
+            notes: feedbackData.notes || scores.notes || '',
+        };
+    }
+
     async submitHospitalFeedback(hospitalId, feedbackData) {
         try {
+            if (!this.getAuthToken()) {
+                throw new Error('Please log in to submit hospital reviews.');
+            }
+            const payload = this.normalizeFeedbackPayload(hospitalId, feedbackData);
             const response = await this.makeRequest('/feedback/submit/', {
                 method: 'POST',
-                body: JSON.stringify({
-                    hospital_id: hospitalId,
-                    ...feedbackData
-                })
+                body: JSON.stringify(payload),
             });
             
             if (response.status === 'success') {
-                return response.data;
-            } else {
-                throw new Error(response.message || 'Failed to submit feedback');
+                return { status: 'success', data: response, message: response.message };
             }
+            throw new Error(response.message || 'Failed to submit feedback');
         } catch (error) {
             console.error('Error submitting feedback:', error);
             throw error;

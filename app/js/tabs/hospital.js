@@ -648,17 +648,7 @@ class HospitalManager {
         if (!id || !window.djangoAPI) return;
 
         try {
-            // Update wait time (POST+PUT supported by backend)
-            await window.djangoAPI.makeRequest(`/hospitals/${id}/update-wait-time/`, {
-                method: 'PUT',
-                body: JSON.stringify({
-                    wait_time_prediction: waitTime,
-                    severity: severity,
-                    notes: notes
-                })
-            });
-
-            // Submit feedback
+            await window.djangoAPI.updateHospitalWaitTime(id, waitTime, severity, notes);
             await window.djangoAPI.submitHospitalFeedback(id, { category_scores, notes });
 
             // Reflect immediately in list

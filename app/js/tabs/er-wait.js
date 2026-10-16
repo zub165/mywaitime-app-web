@@ -289,15 +289,21 @@ class ERWaitManager {
                                     </select>
                                 </div>
 
-                <!-- User Reviews (5 categories) -->
+                <!-- User Reviews — fields match Django /feedback/submit/ -->
                 <div class="mb-3">
-                    <label class="form-label">Quick Review (5 categories)</label>
+                    <label class="form-label">Quick Review (1–5)</label>
                     <div class="row g-2" id="quick-review">
-                        ${['Staff', 'Cleanliness', 'Waiting Area', 'Communication', 'Overall'].map((label, idx) => `
+                        ${[
+                            ['staff_friendliness', 'Staff'],
+                            ['cleanliness', 'Cleanliness'],
+                            ['wait_time', 'Wait Experience'],
+                            ['care_quality', 'Care Quality'],
+                            ['facility_modernity', 'Facility'],
+                        ].map(([key, label]) => `
                         <div class="col-6">
                             <div class="input-group input-group-sm">
-                                <span class="input-group-text w-50">${label}</span>
-                                <select class="form-select" data-category="${label.toLowerCase().replace(/\s+/g,'_')}">
+                                <span class="input-group-text" style="min-width:7rem">${label}</span>
+                                <select class="form-select review-score" data-category="${key}" aria-label="${label} rating">
                                     <option value="1">1</option>
                                     <option value="2">2</option>
                                     <option value="3" selected>3</option>
@@ -648,6 +654,41 @@ class ERWaitManager {
     }
 
     /**
+     * Keep Bootstrap modal on document.body so backdrop does not block typing.
+     */
+    ensureWaitTimeModalOnBody() {
+        let modalElement = document.getElementById('updateWaitTimeModal');
+        if (!modalElement) return null;
+        if (modalElement.parentElement !== document.body) {
+            document.body.appendChild(modalElement);
+        }
+        return modalElement;
+    }
+
+    enableWaitTimeFormInputs() {
+        const ids = ['wait-time-minutes', 'severity-level', 'additional-notes'];
+        ids.forEach((id) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.disabled = false;
+            el.readOnly = false;
+            el.removeAttribute('readonly');
+            el.style.pointerEvents = 'auto';
+            el.style.userSelect = 'text';
+            el.style.background = '#fff';
+        });
+        document.querySelectorAll('#quick-review select.review-score, #quick-review select[data-category]').forEach((el) => {
+            el.disabled = false;
+            el.style.pointerEvents = 'auto';
+            el.style.background = '#fff';
+        });
+        // Drop stacked backdrops that steal clicks
+        document.querySelectorAll('.modal-backdrop').forEach((bd, idx) => {
+            if (idx > 0) bd.remove();
+        });
+    }
+
+    /**
      * Update wait time for a hospital
      */
     updateWaitTime(hospitalId) {
@@ -657,128 +698,41 @@ class ERWaitManager {
             return;
         }
 
-        console.log('Updating wait time for hospital:', hospital.name, hospitalId);
+        const modalElement = this.ensureWaitTimeModalOnBody();
+        if (!modalElement || typeof bootstrap === 'undefined') {
+            this.showError('Update form is not available. Please refresh the page.');
+            return;
+        }
 
-        // Wait for modal to be ready, then populate fields
-        setTimeout(() => {
-            const hospitalIdInput = document.getElementById('update-hospital-id');
-            const waitTimeInput = document.getElementById('wait-time-minutes');
-            const severityInput = document.getElementById('severity-level');
-            const notesInput = document.getElementById('additional-notes');
+        const hospitalIdInput = document.getElementById('update-hospital-id');
+        const waitTimeInput = document.getElementById('wait-time-minutes');
+        const severityInput = document.getElementById('severity-level');
+        const notesInput = document.getElementById('additional-notes');
 
-            console.log('🔍 Modal elements found:', {
-                hospitalIdInput: !!hospitalIdInput,
-                waitTimeInput: !!waitTimeInput,
-                severityInput: !!severityInput,
-                notesInput: !!notesInput
-            });
+        if (hospitalIdInput) hospitalIdInput.value = hospitalId;
+        if (waitTimeInput) {
+            waitTimeInput.value = hospital.wait_time ?? hospital.wait_time_prediction ?? '';
+        }
+        if (severityInput) severityInput.value = hospital.severity || 'medium';
+        if (notesInput) notesInput.value = '';
 
-            if (hospitalIdInput) {
-                hospitalIdInput.value = hospitalId;
-                hospitalIdInput.disabled = false;
-                console.log('✅ Hospital ID set:', hospitalId);
-            }
-            
-            if (waitTimeInput) {
-                waitTimeInput.value = hospital.wait_time || '';
-                waitTimeInput.disabled = false;
-                waitTimeInput.readOnly = false;
-                waitTimeInput.focus();
-                console.log('✅ Wait time input set:', hospital.wait_time);
-            }
-            
-            if (severityInput) {
-                severityInput.value = hospital.severity || 'medium';
-                severityInput.disabled = false;
-                console.log('✅ Severity level set:', hospital.severity || 'medium');
-            }
-            
-            if (notesInput) {
-                notesInput.value = '';
-                notesInput.disabled = false;
-                notesInput.readOnly = false;
-                console.log('✅ Notes input cleared and enabled');
-            }
+        this.enableWaitTimeFormInputs();
 
-            console.log('✅ Modal fields populated for:', hospital.name);
-        }, 100);
-
-        // Show modal
-        const modalElement = document.getElementById('updateWaitTimeModal');
-        const modal = new bootstrap.Modal(modalElement);
-        
-        // Remove any existing event listeners to prevent duplicates
-        modalElement.removeEventListener('shown.bs.modal', this.handleModalShown);
-        
-        // Add event listener for when modal is fully shown
-        this.handleModalShown = () => {
-            console.log('Modal fully shown, re-initializing inputs...');
-            
-            // Re-enable all inputs
-            const waitTimeInput = document.getElementById('wait-time-minutes');
-            const severityInput = document.getElementById('severity-level');
-            const notesInput = document.getElementById('additional-notes');
-            
-            if (waitTimeInput) {
-                waitTimeInput.disabled = false;
-                waitTimeInput.readOnly = false;
-                waitTimeInput.style.pointerEvents = 'auto';
-                waitTimeInput.style.userSelect = 'auto';
-                waitTimeInput.focus();
-            }
-            
-            if (severityInput) {
-                severityInput.disabled = false;
-                severityInput.style.pointerEvents = 'auto';
-                severityInput.style.userSelect = 'auto';
-            }
-            
-            if (notesInput) {
-                notesInput.disabled = false;
-                notesInput.readOnly = false;
-                notesInput.style.pointerEvents = 'auto';
-                notesInput.style.userSelect = 'auto';
-            }
-        };
-        
-        modalElement.addEventListener('shown.bs.modal', this.handleModalShown);
-        
-        modal.show();
-        console.log('Wait time modal opened for:', hospital.name);
-        
-        // Extra safeguard: repeatedly ensure inputs are interactive for a short time
-        const ensureInteractiveInputs = () => {
-            const waitTimeInput = document.getElementById('wait-time-minutes');
-            const severityInput = document.getElementById('severity-level');
-            const notesInput = document.getElementById('additional-notes');
-
-            [waitTimeInput, severityInput, notesInput].forEach((el) => {
-                if (!el) return;
-                el.disabled = false;
-                el.readOnly = false;
-                el.style.pointerEvents = 'auto';
-                el.style.userSelect = 'auto';
-            });
-
-            // Remove any stale modal backdrops that might block clicks
-            document.querySelectorAll('.modal-backdrop').forEach((bd, idx) => {
-                if (idx > 0) bd.remove();
-            });
-        };
-
-        ensureInteractiveInputs();
-        let attempts = 0;
-        const intervalId = setInterval(() => {
-            attempts += 1;
-            ensureInteractiveInputs();
-            if (attempts >= 10) clearInterval(intervalId);
-        }, 100);
-
-        // Add cleanup when modal is hidden
-        modalElement.addEventListener('hidden.bs.modal', () => {
-            console.log('Modal hidden, cleaning up...');
+        if (this.handleModalShown) {
             modalElement.removeEventListener('shown.bs.modal', this.handleModalShown);
-        });
+        }
+        this.handleModalShown = () => {
+            this.enableWaitTimeFormInputs();
+            const focusEl = document.getElementById('wait-time-minutes');
+            if (focusEl) {
+                focusEl.focus();
+                focusEl.select();
+            }
+        };
+        modalElement.addEventListener('shown.bs.modal', this.handleModalShown, { once: true });
+
+        const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+        modal.show();
     }
 
     /**
@@ -786,91 +740,72 @@ class ERWaitManager {
      */
     async submitWaitTimeUpdate() {
         try {
-            console.log('🔄 Starting wait time update process...');
-            
-            const hospitalId = document.getElementById('update-hospital-id').value;
-            const waitTime = parseInt(document.getElementById('wait-time-minutes').value);
-            const severity = document.getElementById('severity-level').value;
-            const notes = document.getElementById('additional-notes').value;
+            const hospitalId = document.getElementById('update-hospital-id')?.value;
+            const waitTime = parseInt(document.getElementById('wait-time-minutes')?.value, 10);
+            const severity = document.getElementById('severity-level')?.value || 'medium';
+            const notes = document.getElementById('additional-notes')?.value || '';
 
-            console.log('📝 Form data:', { hospitalId, waitTime, severity, notes });
-
-            if (!waitTime || waitTime < 0) {
+            if (!Number.isFinite(waitTime) || waitTime < 0) {
                 throw new Error('Please enter a valid wait time');
             }
-
             if (!hospitalId) {
                 throw new Error('Hospital ID is missing');
             }
-
-            // Test Django API connection
-            console.log('🔗 Testing Django API connection...');
-            const isConnected = await window.djangoAPI.testConnection();
-            console.log('🔗 API connection test result:', isConnected);
-            
-            if (!isConnected) {
-                throw new Error('Unable to connect to hospital database. Please try again later.');
+            if (!window.djangoAPI) {
+                throw new Error('API client not loaded');
+            }
+            if (!window.djangoAPI.getAuthToken || !window.djangoAPI.getAuthToken()) {
+                throw new Error('Please log out and log in again so your account token can save updates.');
             }
 
-            // Update via Django API
-            console.log('📡 Sending update request to Django API...');
-            // Collect quick review scores
             const reviewScores = {};
-            const reviewContainer = document.getElementById('quick-review');
-            if (reviewContainer) {
-                reviewContainer.querySelectorAll('select[data-category]').forEach(sel => {
-                    reviewScores[sel.getAttribute('data-category')] = parseInt(sel.value);
-                });
-            }
+            document.querySelectorAll('#quick-review select[data-category]').forEach((sel) => {
+                reviewScores[sel.getAttribute('data-category')] = parseInt(sel.value, 10);
+            });
 
-            // Send wait time update
             const response = await window.djangoAPI.updateHospitalWaitTime(hospitalId, waitTime, severity, notes);
-            
-            console.log('✅ Wait time updated via Django API:', response);
-
-            if (!response || (response.status && response.status !== 'success')) {
-                const message = (response && (response.message || response.detail)) || 'Update may not have been saved.';
-                throw new Error(message);
+            if (!response || response.status !== 'success') {
+                throw new Error((response && response.message) || 'Update may not have been saved.');
             }
 
-            // Update local data
             const hospital = this.findHospital(hospitalId);
             if (hospital) {
                 hospital.wait_time = waitTime;
+                hospital.wait_time_prediction = waitTime;
                 hospital.severity = severity;
                 hospital.last_updated = new Date().toISOString();
-                
-
             }
 
-            // Update display
             this.updateWaitTimesDisplay();
             this.updateStatsDisplay();
 
-            // Submit feedback separately (do not block main update)
+            let reviewOk = true;
             try {
-                if (Object.keys(reviewScores).length > 0 && window.djangoAPI && window.djangoAPI.submitHospitalFeedback) {
+                if (Object.keys(reviewScores).length > 0) {
                     await window.djangoAPI.submitHospitalFeedback(hospitalId, {
                         category_scores: reviewScores,
-                        notes
+                        notes,
                     });
-                    console.log('✅ Submitted review feedback for hospital', hospitalId, reviewScores);
                 }
             } catch (e) {
-                console.warn('⚠️ Failed submitting review feedback (non-blocking):', e.message);
+                reviewOk = false;
+                console.warn('Review feedback failed:', e.message);
             }
 
-            // Close modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('updateWaitTimeModal'));
-            modal.hide();
+            const modalEl = document.getElementById('updateWaitTimeModal');
+            const modal = modalEl && bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
 
-            // Show success message
             if (window.app) {
-                window.app.showNotification('Wait time updated successfully in hospital database!', 'success');
+                window.app.showNotification(
+                    reviewOk
+                        ? 'Wait time and review saved to the hospital database.'
+                        : 'Wait time saved. Review could not be saved — try again.',
+                    reviewOk ? 'success' : 'warning'
+                );
             }
-
         } catch (error) {
-            console.error('❌ Failed to update wait time:', error);
+            console.error('Failed to update wait time:', error);
             if (window.app) {
                 window.app.showNotification(`Failed to update wait time: ${error.message}`, 'danger');
             }
