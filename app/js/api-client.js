@@ -341,7 +341,7 @@ class DjangoAPIClient {
     async sendChatMessage({ message, sessionId, patientId = null }) {
         const response = await this.makeRequest('/chat/', {
             method: 'POST',
-            timeout: 90000,
+            timeout: 120000,
             body: JSON.stringify({
                 message,
                 session_id: sessionId || null,

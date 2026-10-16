@@ -170,7 +170,7 @@ class ChatManager {
             } else if (window.djangoAPI) {
                 const response = await window.djangoAPI.makeRequest('/chat/', {
                     method: 'POST',
-                    timeout: 90000,
+                    timeout: 120000,
                     body: JSON.stringify({
                         message,
                         session_id: this.sessionId,
