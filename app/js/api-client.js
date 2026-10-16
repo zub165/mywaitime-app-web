@@ -190,30 +190,42 @@ class DjangoAPIClient {
      */
     async makeRequest(endpoint, options = {}) {
         const url = `${this.baseURL}${endpoint}`;
+        const { timeout: optionTimeout, headers: optionHeaders, ...rest } = options;
+        const controller = new AbortController();
+        const ms = optionTimeout || this.timeout || 12000;
+        const timer = setTimeout(() => controller.abort(), ms);
+
         const config = {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
-                'Accept': 'application/json',
+                Accept: 'application/json',
+                ...(optionHeaders || {}),
             },
-            timeout: this.timeout,
-            ...options
+            signal: controller.signal,
+            ...rest,
         };
 
         try {
             console.log(`🔄 API Request: ${config.method} ${url}`);
             const response = await fetch(url, config);
-            
+
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
-            
+
             const data = await response.json();
             console.log(`✅ API Response: ${url}`, data);
             return data;
         } catch (error) {
+            if (error && error.name === 'AbortError') {
+                console.error(`❌ API Timeout: ${url}`);
+                throw new Error(`Request timed out after ${ms}ms`);
+            }
             console.error(`❌ API Error: ${url}`, error);
             throw error;
+        } finally {
+            clearTimeout(timer);
         }
     }
 
@@ -223,39 +235,29 @@ class DjangoAPIClient {
     async getHospitalsByLocation(latitude, longitude, radius = 25, sort = 'smart') {
         try {
             const sortQ = sort ? `&sort=${encodeURIComponent(sort)}` : '';
-            // Try search endpoint with common param variations
+            // Prefer the known-good Django contract first (avoid long multi-variant hangs)
             const queries = [
                 `/hospitals/search/?lat=${latitude}&lon=${longitude}&radius_miles=${radius}${sortQ}`,
-                `/hospitals/search/?lat=${latitude}&lon=${longitude}&radius=${radius * 1609.34}${sortQ}`,
                 `/hospitals/search/?lat=${latitude}&lng=${longitude}&radius_miles=${radius}${sortQ}`,
-                `/hospitals/search/?latitude=${latitude}&longitude=${longitude}&radius=${radius}${sortQ}`,
             ];
 
             for (const q of queries) {
                 try {
-                    const resp = await this.makeRequest(q);
+                    const resp = await this.makeRequest(q, { timeout: 10000 });
                     if (resp && resp.status === 'success' && Array.isArray(resp.data) && resp.data.length > 0) {
                         return this.formatHospitalData(resp.data);
                     }
+                    if (resp && resp.status === 'success' && Array.isArray(resp.data)) {
+                        return this.formatHospitalData(resp.data);
+                    }
                 } catch (e) {
-                    // Try next variation
                     console.warn('Hospital search variant failed:', q, e.message);
                 }
             }
 
-            // Fallback: fetch all and filter client-side by distance
-            console.warn('Search returned no hospitals. Falling back to /hospitals/ + client-side filtering');
-            const allResp = await this.makeRequest('/hospitals/');
-            const allHospitals = (allResp && allResp.status === 'success') ? allResp.data : [];
-            const formatted = this.formatHospitalData(allHospitals);
-
-            // Filter by radius in miles
-            const filtered = formatted.filter(h => {
-                if (typeof h.latitude !== 'number' || typeof h.longitude !== 'number') return false;
-                const dist = this.calculateDistance(latitude, longitude, h.latitude, h.longitude);
-                return dist <= radius;
-            });
-            return filtered;
+            // Lightweight nearby fallback — never download the entire hospital catalog
+            console.warn('Search returned no hospitals; returning empty list for UI fallback');
+            return [];
         } catch (error) {
             console.error('Error fetching hospitals by location:', error);
             throw error;

@@ -80,17 +80,17 @@ class HospitalManager {
      */
     async init() {
         try {
-            // Initialize map
-            this.initializeMap();
-            
-            // Get user location
-            await this.getUserLocation();
-            
-            // Load initial hospitals
-            await this.loadHospitals();
-            
-            // Set up event listeners
             this.setupEventListeners();
+            this.initializeMap();
+
+            // Never hang the tab on GPS / API
+            await Promise.race([
+                (async () => {
+                    await this.getUserLocation();
+                    await this.loadHospitals();
+                })(),
+                new Promise((resolve) => setTimeout(resolve, 15000)),
+            ]);
             
             console.log('Hospital tab initialized successfully');
         } catch (error) {

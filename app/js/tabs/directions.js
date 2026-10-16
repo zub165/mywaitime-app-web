@@ -16,15 +16,15 @@ class DirectionsManager {
      */
     async init() {
         try {
-            // Initialize map
-            this.initializeMap();
-            
-            // Get user location
-            await this.getUserLocation();
-            
-            // Set up event listeners
             this.setupEventListeners();
-            
+            this.initializeMap();
+            await Promise.race([
+                this.getUserLocation(),
+                new Promise((resolve) => setTimeout(resolve, 8000)),
+            ]);
+            if (!this.currentLocation) {
+                this.currentLocation = { lat: 27.9506, lng: -82.4572, city: 'Tampa', state: 'FL' };
+            }
             console.log('Directions tab initialized successfully');
         } catch (error) {
             console.error('Failed to initialize Directions tab:', error);

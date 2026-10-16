@@ -23,12 +23,21 @@ class ChatManager {
      */
     async init() {
         try {
-            // Load chat history
-            await this.loadChatHistory();
-            
-            // Set up event listeners
             this.setupEventListeners();
-            
+            // History fetch must not block chat UI
+            await Promise.race([
+                this.loadChatHistory(),
+                new Promise((resolve) => setTimeout(resolve, 8000)),
+            ]);
+            if (!this.chatHistory.length) {
+                this.chatHistory = [{
+                    id: 1,
+                    message: "Hello! I'm your medical assistant. How can I help you today?",
+                    sender: 'bot',
+                    timestamp: new Date().toISOString(),
+                }];
+                this.displayChatHistory();
+            }
             console.log('Chat tab initialized successfully');
         } catch (error) {
             console.error('Failed to initialize Chat tab:', error);

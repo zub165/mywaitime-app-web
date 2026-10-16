@@ -240,12 +240,9 @@
 
     function redirectAfterAuth(user, { isNewUser } = {}) {
         const role = normalizeRole(user && user.role);
-        if (role === 'admin') {
-            window.location.href = 'admin-panel.html';
-            return;
-        }
+        // Keep everyone in the main app tabs; admin panel is optional
         if (isNewUser && role === 'user') {
-            window.location.href = 'index.html?tab=registration&new_user=true';
+            window.location.href = 'index.html#registration';
             return;
         }
         window.location.href = 'index.html#er-wait';

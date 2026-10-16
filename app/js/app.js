@@ -44,15 +44,28 @@ class ERWaitTimeApp {
                 this.hideLoading();
                 return;
             }
+
+            // Honor #tab hash (e.g. #hospital) when present
+            const hashTab = (location.hash || '').replace(/^#/, '').trim();
+            if (hashTab && ['er-wait', 'chat', 'hospital', 'registration', 'records', 'directions'].includes(hashTab)) {
+                this.currentTab = hashTab;
+            }
             
             // Initialize components
             await this.initializeComponents();
             
             // Set up event listeners
             this.setupEventListeners();
+
+            // Ensure main UI is visible (auth screen may have hidden it earlier)
+            this.revealMainApp();
             
-            // Load initial tab
-            await this.loadTab(this.currentTab);
+            // Load initial tab (never leave spinner stuck)
+            try {
+                await this.loadTab(this.currentTab);
+            } catch (tabErr) {
+                console.error('Initial tab load failed:', tabErr);
+            }
             
             this.hideLoading();
             this.showNotification('Application loaded successfully!', 'success');
@@ -60,8 +73,30 @@ class ERWaitTimeApp {
         } catch (error) {
             console.error('Failed to initialize application:', error);
             this.hideLoading();
+            this.revealMainApp();
             this.showNotification('Failed to load application. Please refresh the page.', 'danger');
         }
+    }
+
+    /**
+     * Ensure navbar + tab container are visible after auth / failed loads
+     */
+    revealMainApp() {
+        const authScreen = document.getElementById('auth-screen');
+        if (authScreen) authScreen.remove();
+
+        const navigation = document.querySelector('.navbar') || document.querySelector('.navigation');
+        if (navigation) navigation.style.display = '';
+
+        const mainTabContent = document.getElementById('tab-content');
+        if (mainTabContent) {
+            mainTabContent.style.display = '';
+            mainTabContent.style.visibility = 'visible';
+            mainTabContent.hidden = false;
+        }
+
+        const main = document.querySelector('.main-content');
+        if (main) main.style.display = '';
     }
 
     /**
@@ -179,14 +214,24 @@ class ERWaitTimeApp {
      * Set up global event listeners
      */
     setupEventListeners() {
-        // Navigation clicks
+        // Navigation clicks (ignore auth-screen tabs which use data-auth-tab)
         document.addEventListener('click', (e) => {
-            if (e.target.matches('[data-tab]') || e.target.closest('[data-tab]')) {
-                e.preventDefault();
-                const tabElement = e.target.matches('[data-tab]') ? e.target : e.target.closest('[data-tab]');
-                const tabName = tabElement.getAttribute('data-tab');
-                this.navigateToTab(tabName);
+            const tabElement = e.target.closest('[data-tab]');
+            if (!tabElement) return;
+            if (tabElement.hasAttribute('data-auth-tab') || tabElement.closest('#auth-screen')) return;
+            // Only main nav module tabs
+            const tabName = tabElement.getAttribute('data-tab');
+            if (!['er-wait', 'chat', 'hospital', 'registration', 'records', 'directions'].includes(tabName)) {
+                return;
             }
+            e.preventDefault();
+            // Collapse mobile navbar after click
+            const collapse = document.getElementById('navbarNav');
+            if (collapse && collapse.classList.contains('show') && window.bootstrap) {
+                const inst = bootstrap.Collapse.getInstance(collapse) || new bootstrap.Collapse(collapse, { toggle: false });
+                inst.hide();
+            }
+            this.navigateToTab(tabName);
         });
 
         // Handle browser back/forward
@@ -215,27 +260,28 @@ class ERWaitTimeApp {
      * Navigate to a specific tab
      */
     async navigateToTab(tabName) {
-        if (this.isLoading) return;
-        
+        // Never hard-block navigation on a previous stuck load
         try {
-            this.showLoading();
-            
-            // Update navigation state
             this.updateNavigationState(tabName);
-            
-            // Load tab content
             await this.loadTab(tabName);
-            
-            // Update browser history
             history.pushState({ tab: tabName }, '', `#${tabName}`);
-            
-            this.hideLoading();
-            
         } catch (error) {
             console.error(`Failed to navigate to ${tabName}:`, error);
             this.hideLoading();
             this.showNotification(`Failed to load ${tabName} tab`, 'danger');
         }
+    }
+
+    /**
+     * Resolve path under /app/ on GitHub Pages (and / locally)
+     */
+    appPath(relativePath) {
+        const path = relativePath.replace(/^\//, '');
+        // GitHub Pages serves the app under /app/
+        if (location.pathname === '/app' || location.pathname.startsWith('/app/')) {
+            return `/app/${path}`;
+        }
+        return path;
     }
 
     /**
@@ -246,34 +292,44 @@ class ERWaitTimeApp {
         
         console.log(`Loading tab: ${tabName}`);
         this.currentTab = tabName;
+        this.revealMainApp();
+
+        const contentContainer = document.getElementById('tab-content');
+        if (contentContainer) {
+            contentContainer.innerHTML = `
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="text-muted mt-2 mb-0">Loading ${tabName}...</p>
+                </div>`;
+        }
         
         try {
-            // Get tab content
             const tabContent = await this.getTabContent(tabName);
             console.log(`Tab content loaded for ${tabName}:`, tabContent.substring(0, 100) + '...');
             
-            // Update DOM
-            const contentContainer = document.getElementById('tab-content');
             if (contentContainer) {
                 contentContainer.innerHTML = tabContent;
                 contentContainer.classList.add('fade-in');
-                console.log(`Tab content inserted into DOM for ${tabName}`);
-                
-                // Remove animation class after animation completes
-                setTimeout(() => {
-                    contentContainer.classList.remove('fade-in');
-                }, 500);
-            } else {
-                console.error('Tab content container not found');
+                setTimeout(() => contentContainer.classList.remove('fade-in'), 500);
             }
             
-            // Initialize tab-specific functionality
-            await this.initializeTab(tabName);
+            // Tab init must not hang forever — race with timeout
+            await Promise.race([
+                this.initializeTab(tabName),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Tab init timed out')), 20000)),
+            ]).catch((err) => {
+                console.warn(`Tab ${tabName} init warning:`, err);
+            });
             console.log(`Tab ${tabName} initialized successfully`);
             
         } catch (error) {
             console.error(`Error loading tab ${tabName}:`, error);
+            if (contentContainer) {
+                contentContainer.innerHTML = this.getErrorContent(tabName);
+            }
             this.showNotification(`Failed to load ${tabName} content`, 'danger');
+        } finally {
+            this.hideLoading();
         }
     }
 
@@ -282,8 +338,9 @@ class ERWaitTimeApp {
      */
     async getTabContent(tabName) {
         try {
-            console.log(`Fetching tab content for: ${tabName}`);
-            const response = await fetch(`tabs/${tabName}.html`);
+            const url = this.appPath(`tabs/${tabName}.html`);
+            console.log(`Fetching tab content for: ${tabName} -> ${url}`);
+            const response = await fetch(url, { cache: 'no-cache' });
             console.log(`Response status: ${response.status}`);
             
             if (!response.ok) {
@@ -422,14 +479,26 @@ class ERWaitTimeApp {
         };
 
         try {
-            // Test Django backend
-            const response = await fetch(`${this.config.apiBaseUrl}/hospitals/`);
+            // Lightweight health check (avoid downloading full hospital list)
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 8000);
+            const response = await fetch(`${this.config.apiBaseUrl}/hospitals/stats/`, {
+                signal: controller.signal,
+            });
+            clearTimeout(timer);
             if (response.ok) {
                 this.backendStatus.django = true;
                 console.log('✅ Django backend connected');
             }
         } catch (error) {
             console.error('❌ Django backend connection failed:', error);
+            // Fallback probe
+            try {
+                const response = await fetch(`${this.config.apiBaseUrl}/hospitals/search/?lat=27.95&lon=-82.45&radius_miles=5&sort=smart`);
+                this.backendStatus.django = response.ok;
+            } catch (_) {
+                this.backendStatus.django = false;
+            }
         }
 
         // Update UI with backend status
@@ -491,7 +560,8 @@ class ERWaitTimeApp {
         const logoutBtn = document.getElementById('logout-btn');
         
         if (userInfoElement && this.user) {
-            userInfoElement.textContent = this.user.username || this.user.first_name || 'User';
+            userInfoElement.textContent =
+                this.user.full_name || this.user.email || this.user.username || this.user.first_name || 'User';
             if (logoutBtn) {
                 logoutBtn.style.display = 'inline-block';
             }
@@ -682,9 +752,9 @@ class ERWaitTimeApp {
                 </div>
                 
                 <div class="auth-tabs">
-                    <button class="auth-tab active" data-tab="register">Register</button>
-                    <button class="auth-tab" data-tab="login">Login</button>
-                    <button class="auth-tab" data-tab="forgot">Forgot</button>
+                    <button class="auth-tab active" data-auth-tab="register" type="button">Register</button>
+                    <button class="auth-tab" data-auth-tab="login" type="button">Login</button>
+                    <button class="auth-tab" data-auth-tab="forgot" type="button">Forgot</button>
                 </div>
 
                 <div class="auth-content">
@@ -955,21 +1025,20 @@ class ERWaitTimeApp {
      * Set up authentication form event listeners
      */
     setupAuthEventListeners() {
-        // Tab switching
-        const authTabs = document.querySelectorAll('.auth-tab');
-        const authForms = document.querySelectorAll('.auth-form');
+        // Tab switching (auth only — do not use data-tab, that triggers app navigation)
+        const authTabs = document.querySelectorAll('#auth-screen .auth-tab');
+        const authForms = document.querySelectorAll('#auth-screen .auth-form');
 
         authTabs.forEach(tab => {
             tab.addEventListener('click', () => {
-                const tabName = tab.dataset.tab;
+                const tabName = tab.getAttribute('data-auth-tab');
+                if (!tabName) return;
                 
-                // Update active tab
                 authTabs.forEach(t => t.classList.remove('active'));
                 tab.classList.add('active');
                 
-                // Update active form
                 authForms.forEach(form => form.classList.remove('active'));
-                document.getElementById(`${tabName}-form`).classList.add('active');
+                document.getElementById(`${tabName}-form`)?.classList.add('active');
             });
         });
 
@@ -999,7 +1068,7 @@ class ERWaitTimeApp {
         if (gotoForgot) {
             gotoForgot.addEventListener('click', (e) => {
                 e.preventDefault();
-                document.querySelector('.auth-tab[data-tab="forgot"]')?.click();
+                document.querySelector('.auth-tab[data-auth-tab="forgot"]')?.click();
             });
         }
     }
@@ -1026,7 +1095,7 @@ class ERWaitTimeApp {
 
             if (result.success) {
                 this.showNotification('Registration successful! Please login.', 'success');
-                document.querySelector('.auth-tab[data-tab="login"]')?.click();
+                document.querySelector('.auth-tab[data-auth-tab="login"]')?.click();
             } else {
                 this.showNotification('Registration failed: ' + result.message, 'danger');
             }
@@ -1050,30 +1119,24 @@ class ERWaitTimeApp {
 
             if (result.success) {
                 this.setCurrentUser(result.user);
-
-                const authScreen = document.getElementById('auth-screen');
-                if (authScreen) authScreen.remove();
-
-                const navigation = document.querySelector('.navigation') || document.querySelector('.navbar');
-                if (navigation) navigation.style.display = '';
-
-                const mainTabContent = document.getElementById('tab-content');
-                if (mainTabContent) mainTabContent.style.display = '';
-
-                if (result.user.role === 'admin') {
-                    window.location.href = 'admin-panel.html';
-                    return;
-                }
+                this.revealMainApp();
 
                 await this.initializeComponents();
                 this.setupEventListeners();
-                await this.loadTab(this.currentTab);
+                this.hideLoading();
+                await this.loadTab(this.currentTab || 'er-wait');
 
                 this.showNotification('Login successful! Welcome to ER Wait Time.', 'success');
+
+                // Admins can use the main app; admin panel is available separately
+                if (result.user.role === 'admin') {
+                    this.showNotification('Admin tip: open admin-panel.html for management tools.', 'info');
+                }
             } else {
                 this.showNotification('Login failed: ' + result.message, 'danger');
             }
         } catch (error) {
+            this.hideLoading();
             this.showNotification('Login error: ' + error.message, 'danger');
         }
     }

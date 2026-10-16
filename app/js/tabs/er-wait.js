@@ -21,25 +21,45 @@ class ERWaitManager {
      */
     async init() {
         try {
-            // Create the enhanced UI
+            // Create the enhanced UI immediately so the tab is never blank
             this.createEnhancedUI();
-            
-            // Get user location
-            await this.getUserLocation();
-            
-            // Load initial data
-            await this.loadWaitTimes();
-            
-            // Set up auto-refresh
-            this.setupAutoRefresh();
-            
-            // Set up event listeners
             this.setupEventListeners();
+            this.setupAutoRefresh();
+
+            // Location + data load must not block tab UI forever
+            await Promise.race([
+                this.bootstrapData(),
+                new Promise((resolve) => setTimeout(resolve, 15000)),
+            ]);
             
             console.log('ER Wait Time tab initialized successfully');
         } catch (error) {
             console.error('Failed to initialize ER Wait Time tab:', error);
             this.showError('Failed to load ER wait times. Please try again.');
+        }
+    }
+
+    async bootstrapData() {
+        try {
+            await this.getUserLocation();
+        } catch (e) {
+            console.warn('Location fallback to Tampa:', e);
+            this.currentLocation = {
+                lat: 27.9506,
+                lng: -82.4572,
+                city: 'Tampa',
+                state: 'FL',
+                radius: 25,
+            };
+            this.updateLocationDisplay();
+        }
+        try {
+            await this.loadWaitTimes();
+        } catch (e) {
+            console.error('Wait times load failed:', e);
+            this.loadMockData();
+            this.updateWaitTimesDisplay();
+            this.updateStatsDisplay();
         }
     }
 
@@ -315,31 +335,28 @@ class ERWaitManager {
      * Get user's current location
      */
     async getUserLocation() {
+        const fallback = {
+            lat: 27.9506,
+            lng: -82.4572,
+            city: 'Tampa',
+            state: 'FL',
+            radius: 25,
+        };
         try {
             if (window.utils) {
-                this.currentLocation = await window.utils.getUserLocation();
-                this.updateLocationDisplay();
+                const loc = await Promise.race([
+                    window.utils.getUserLocation(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('location timeout')), 8000)),
+                ]);
+                this.currentLocation = { ...fallback, ...loc };
             } else {
-                // Fallback to default location
-                this.currentLocation = {
-                    lat: 27.9506,
-                    lng: -82.4572,
-                    city: 'Tampa',
-                    state: 'FL'
-                };
-                this.updateLocationDisplay();
+                this.currentLocation = fallback;
             }
         } catch (error) {
             console.error('Failed to get user location:', error);
-            // Use default location
-            this.currentLocation = {
-                lat: 27.9506,
-                lng: -82.4572,
-                city: 'Tampa',
-                state: 'FL'
-            };
-            this.updateLocationDisplay();
+            this.currentLocation = fallback;
         }
+        this.updateLocationDisplay();
     }
 
     /**
