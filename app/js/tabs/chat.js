@@ -88,18 +88,37 @@ class ChatManager {
     }
 
     /**
+     * Escape HTML then light-format assistant markdown (bold, lists, newlines).
+     */
+    formatMessageText(text) {
+        const raw = String(text || '');
+        const escaped = raw
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+        return escaped
+            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+            .replace(/^[\-\*]\s+(.+)$/gm, '• $1')
+            .replace(/\n/g, '<br>');
+    }
+
+    /**
      * Create message HTML
      */
     createMessageHtml(message) {
         const isBot = message.sender === 'bot';
         const timestamp = new Date(message.timestamp).toLocaleTimeString();
+        const provider = message.provider
+            ? `<div class="message-time">via ${message.provider}</div>`
+            : '';
         
         return `
             <div class="chat-message ${isBot ? 'bot' : 'user'}">
                 <div class="message-bubble ${isBot ? 'bot' : 'user'}">
                     ${isBot ? '<i class="fas fa-robot me-2"></i>' : ''}
-                    ${message.message}
+                    ${this.formatMessageText(message.message)}
                     <div class="message-time">${timestamp}</div>
+                    ${isBot ? provider : ''}
                 </div>
             </div>
         `;
@@ -131,24 +150,38 @@ class ChatManager {
         this.showTypingIndicator();
 
         try {
-            // Send message to Django AI API
             let botResponse;
-            if (window.djangoAPI) {
-                console.log('🤖 Sending message to Django AI backend:', message);
-                const response = await window.djangoAPI.makeRequest('/chat/', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        message: message,
-                        patient_id: window.app ? window.app.getCurrentUser()?.id : null,
-                        session_id: this.sessionId
-                    })
+            let provider = null;
+            if (window.djangoAPI && typeof window.djangoAPI.sendChatMessage === 'function') {
+                console.log('🤖 Sending message to Django Qwen/Ollama backend:', message);
+                let patientId = null;
+                try {
+                    patientId = window.app?.getCurrentUser?.()?.id || null;
+                } catch (_) { /* ignore */ }
+
+                const response = await window.djangoAPI.sendChatMessage({
+                    message,
+                    sessionId: this.sessionId,
+                    patientId,
                 });
                 botResponse = response.response || response.message || 'I received your message.';
-                console.log('✅ Received AI response:', botResponse);
+                provider = response.llm_provider || 'ollama';
+                console.log('✅ Received AI response via', provider, botResponse.slice(0, 120));
+            } else if (window.djangoAPI) {
+                const response = await window.djangoAPI.makeRequest('/chat/', {
+                    method: 'POST',
+                    timeout: 90000,
+                    body: JSON.stringify({
+                        message,
+                        session_id: this.sessionId,
+                    }),
+                });
+                botResponse = response.response || response.message || 'I received your message.';
+                provider = response.llm_provider || null;
             } else {
                 console.log('⚠️ Django API not available, using mock response');
-                // Mock response
                 botResponse = this.generateMockResponse(message);
+                provider = 'offline';
             }
 
             // Hide typing indicator
@@ -159,7 +192,8 @@ class ChatManager {
                 id: Date.now() + 1,
                 message: botResponse,
                 sender: 'bot',
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                provider,
             };
             
             this.addMessageToChat(botMessage);
@@ -168,10 +202,10 @@ class ChatManager {
             console.error('Failed to send message:', error);
             this.hideTypingIndicator();
             
-            // Show error message
+            const detail = (error && error.message) ? error.message : 'unknown error';
             const errorMessage = {
                 id: Date.now() + 1,
-                message: "I'm sorry, I'm having trouble connecting right now. Please try again later.",
+                message: `I'm having trouble reaching the medical AI right now (${detail}). Please try again in a moment.`,
                 sender: 'bot',
                 timestamp: new Date().toISOString()
             };

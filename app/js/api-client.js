@@ -336,6 +336,25 @@ class DjangoAPIClient {
     }
 
     /**
+     * Medical assistant chat — local free Qwen/Ollama (may take 30–90s).
+     */
+    async sendChatMessage({ message, sessionId, patientId = null }) {
+        const response = await this.makeRequest('/chat/', {
+            method: 'POST',
+            timeout: 90000,
+            body: JSON.stringify({
+                message,
+                session_id: sessionId || null,
+                patient_id: patientId || null,
+            }),
+        });
+        if (response && response.status === 'success') {
+            return response;
+        }
+        throw new Error((response && response.message) || 'Chat request failed');
+    }
+
+    /**
      * Update hospital wait time
      */
     async updateHospitalWaitTime(hospitalId, waitTime, severity = 'medium', notes = '') {
