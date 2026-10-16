@@ -341,14 +341,19 @@ class ERWaitManager {
 
     /**
      * Move ER Wait modals to document.body, replacing any stale copies.
-     * Duplicate IDs from prior tab visits would leave getElementById stuck on a dead modal.
+     * Only remove/replace when a NEW modal exists inside #tab-content.
+     * If the modal is already on body, leave it alone (do not delete it).
      */
     mountModalsToBody() {
         ['updateWaitTimeModal', 'locationModal'].forEach((id) => {
-            const fresh = document.querySelector(`#tab-content #${id}`);
-            // Dispose/remove every existing instance (usually on body from last visit)
+            const inTab = document.querySelector(`#tab-content #${id}`);
+            if (!inTab) {
+                // Already mounted on body from init — keep existing node
+                return;
+            }
+            // New UI just rendered in the tab — drop older body copies, then move
             document.querySelectorAll(`#${id}`).forEach((el) => {
-                if (fresh && el === fresh) return;
+                if (el === inTab) return;
                 try {
                     if (typeof bootstrap !== 'undefined') {
                         bootstrap.Modal.getInstance(el)?.dispose();
@@ -356,8 +361,8 @@ class ERWaitManager {
                 } catch (_) { /* ignore */ }
                 el.remove();
             });
-            if (fresh && fresh.parentElement !== document.body) {
-                document.body.appendChild(fresh);
+            if (inTab.parentElement !== document.body) {
+                document.body.appendChild(inTab);
             }
         });
     }
@@ -682,9 +687,95 @@ class ERWaitManager {
      * Keep Bootstrap modal on document.body so backdrop does not block typing.
      */
     ensureWaitTimeModalOnBody() {
-        this.mountModalsToBody();
-        const modalElement = document.getElementById('updateWaitTimeModal');
+        let modalElement = document.getElementById('updateWaitTimeModal');
+        if (!modalElement) {
+            // Modal was lost — remount from a fresh UI shell without wiping hospital cards
+            this.ensureModalMarkupExists();
+            this.mountModalsToBody();
+            modalElement = document.getElementById('updateWaitTimeModal');
+        } else if (modalElement.parentElement !== document.body) {
+            document.body.appendChild(modalElement);
+        }
         return modalElement || null;
+    }
+
+    /** Inject wait-time + location modals if they were removed from the DOM. */
+    ensureModalMarkupExists() {
+        if (document.getElementById('updateWaitTimeModal')) return;
+        const wrap = document.createElement('div');
+        wrap.innerHTML = `
+            <div class="modal fade" id="updateWaitTimeModal" tabindex="-1" aria-labelledby="updateWaitTimeModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="updateWaitTimeModalLabel">
+                                <i class="fas fa-clock text-warning me-2"></i>Update Wait Time
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="update-wait-time-form">
+                                <input type="hidden" id="update-hospital-id">
+                                <div class="mb-3">
+                                    <label for="wait-time-minutes" class="form-label">Wait Time (minutes)</label>
+                                    <input type="number" class="form-control" id="wait-time-minutes" min="0" max="480" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="severity-level" class="form-label">Severity Level</label>
+                                    <select class="form-select" id="severity-level" required>
+                                        <option value="low">Low (≤30 minutes)</option>
+                                        <option value="medium" selected>Medium (31-60 minutes)</option>
+                                        <option value="high">High (61-120 minutes)</option>
+                                        <option value="critical">Critical (>120 minutes)</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Quick Review (1–5)</label>
+                                    <div class="row g-2" id="quick-review">
+                                        ${[
+                                            ['staff_friendliness', 'Staff'],
+                                            ['cleanliness', 'Cleanliness'],
+                                            ['wait_time', 'Wait Experience'],
+                                            ['care_quality', 'Care Quality'],
+                                            ['facility_modernity', 'Facility'],
+                                        ].map(([key, label]) => `
+                                        <div class="col-6">
+                                            <div class="input-group input-group-sm">
+                                                <span class="input-group-text" style="min-width:7rem">${label}</span>
+                                                <select class="form-select review-score" data-category="${key}">
+                                                    <option value="1">1</option>
+                                                    <option value="2">2</option>
+                                                    <option value="3" selected>3</option>
+                                                    <option value="4">4</option>
+                                                    <option value="5">5</option>
+                                                </select>
+                                            </div>
+                                        </div>`).join('')}
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="additional-notes" class="form-label">Additional Notes (Optional)</label>
+                                    <textarea class="form-control" id="additional-notes" rows="3"></textarea>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-primary" id="submit-wait-time-update">
+                                <i class="fas fa-save me-2"></i>Update Wait Time
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        document.body.appendChild(wrap.firstElementChild);
+        const submitBtn = document.getElementById('submit-wait-time-update');
+        if (submitBtn) {
+            submitBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.submitWaitTimeUpdate();
+            });
+        }
     }
 
     enableWaitTimeFormInputs() {
