@@ -335,6 +335,15 @@ class ERWaitManager {
                 </div>
             </div>
         `;
+
+        // Modals must live on <body>. Inside #tab-content (fade/transform)
+        // Bootstrap backdrops cover the dialog → grey, uneditable fields.
+        ['updateWaitTimeModal', 'locationModal'].forEach((id) => {
+            const el = document.getElementById(id);
+            if (el && el.parentElement !== document.body) {
+                document.body.appendChild(el);
+            }
+        });
     }
 
     /**

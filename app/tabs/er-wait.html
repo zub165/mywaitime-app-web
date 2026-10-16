@@ -66,52 +66,7 @@
         </div>
     </div>
 
-    <!-- Update Wait Time Modal -->
-    <div class="modal fade" id="updateWaitTimeModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">
-                        <i class="fas fa-clock me-2"></i>Update Wait Time
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="update-wait-time-form">
-                        <input type="hidden" id="update-hospital-id">
-                        
-                        <div class="mb-3">
-                            <label for="wait-time-minutes" class="form-label">Wait Time (minutes)</label>
-                            <input type="number" class="form-control" id="wait-time-minutes" 
-                                   min="0" max="480" placeholder="Enter wait time in minutes">
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="severity-level" class="form-label">Severity Level</label>
-                            <select class="form-select" id="severity-level">
-                                <option value="low">Low - Non-urgent</option>
-                                <option value="medium">Medium - Urgent</option>
-                                <option value="high">High - Emergency</option>
-                                <option value="critical">Critical - Life-threatening</option>
-                            </select>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="additional-notes" class="form-label">Additional Notes (Optional)</label>
-                            <textarea class="form-control" id="additional-notes" rows="3" 
-                                      placeholder="Any additional information about the wait time..."></textarea>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" id="submit-wait-time-update">
-                        <i class="fas fa-save me-1"></i>Update Wait Time
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- Update Wait Time modal is created by er-wait.js and attached to document.body -->
 
     <!-- Legend -->
     <div class="row mt-4">

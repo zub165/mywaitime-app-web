@@ -431,18 +431,44 @@ body {
 
 /* Modern Animation Classes */
 .fade-in {
-    animation: fadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    /* Opacity-only — transform on #tab-content breaks Bootstrap modals
+       (backdrop sits above inputs → fields look grey and cannot be edited) */
+    animation: fadeIn 0.45s ease;
 }
 
 @keyframes fadeIn {
-    from { 
-        opacity: 0; 
-        transform: translateY(30px) scale(0.95); 
-    }
-    to { 
-        opacity: 1; 
-        transform: translateY(0) scale(1); 
-    }
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Wait-time / review modal — always editable, solid white fields */
+#updateWaitTimeModal .modal-content,
+#locationModal .modal-content,
+#hospitalPerformanceModal .modal-content {
+    pointer-events: auto !important;
+}
+#updateWaitTimeModal input,
+#updateWaitTimeModal select,
+#updateWaitTimeModal textarea,
+#locationModal input,
+#locationModal select,
+#locationModal textarea,
+#hospitalPerformanceModal input,
+#hospitalPerformanceModal select,
+#hospitalPerformanceModal textarea {
+    pointer-events: auto !important;
+    user-select: text !important;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    opacity: 1 !important;
+    color: #1e293b !important;
+    -webkit-text-fill-color: #1e293b !important;
+}
+#updateWaitTimeModal input:disabled,
+#updateWaitTimeModal select:disabled,
+#updateWaitTimeModal textarea:disabled {
+    background: #ffffff !important;
+    opacity: 1 !important;
 }
 
 .slide-in {
