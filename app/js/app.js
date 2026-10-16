@@ -371,22 +371,20 @@ class ERWaitTimeApp {
 
         const initializer = tabInitializers[tabName];
         if (initializer) {
+            const originalConsoleError = console.error;
             try {
                 // Suppress external routing errors that might interfere
-                const originalConsoleError = console.error;
                 console.error = (...args) => {
                     const message = args[0]?.toString() || '';
-                    // Filter out external "No route matched" errors
                     if (message.includes('No route matched') && !message.includes('ERWaitTimeApp')) {
-                        return; // Suppress this error
+                        return;
                     }
                     originalConsoleError.apply(console, args);
                 };
 
                 await initializer();
-                
             } catch (error) {
-                console.error(`Failed to initialize ${tabName} tab:`, error);
+                originalConsoleError(`Failed to initialize ${tabName} tab:`, error);
                 this.showNotification(`Failed to initialize ${tabName} functionality`, 'warning');
             } finally {
                 console.error = originalConsoleError;

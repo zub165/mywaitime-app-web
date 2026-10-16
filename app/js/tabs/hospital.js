@@ -125,31 +125,28 @@ class HospitalManager {
      * Get user's current location
      */
     async getUserLocation() {
+        const fallback = {
+            lat: 27.9506,
+            lng: -82.4572,
+            city: 'Tampa',
+            state: 'FL',
+        };
         try {
             if (window.utils) {
-                this.currentLocation = await window.utils.getUserLocation();
-                this.updateLocationDisplay();
-                this.updateMapCenter();
+                this.currentLocation = await Promise.race([
+                    window.utils.getUserLocation(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('location timeout')), 8000)),
+                ]);
             } else {
-                // Fallback to default location
-                this.currentLocation = {
-                    lat: 27.9506,
-                    lng: -82.4572,
-                    city: 'Tampa',
-                    state: 'FL'
-                };
-                this.updateLocationDisplay();
+                this.currentLocation = fallback;
             }
         } catch (error) {
             console.error('Failed to get user location:', error);
-            // Use default location
-            this.currentLocation = {
-                lat: 27.9506,
-                lng: -82.4572,
-                city: 'Tampa',
-                state: 'FL'
-            };
-            this.updateLocationDisplay();
+            this.currentLocation = fallback;
+        }
+        this.updateLocationDisplay();
+        if (this.map && this.currentLocation) {
+            this.updateMapCenter();
         }
     }
 
