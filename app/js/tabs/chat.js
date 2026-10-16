@@ -32,7 +32,7 @@ class ChatManager {
             if (!this.chatHistory.length) {
                 this.chatHistory = [{
                     id: 1,
-                    message: "Hello! I'm your medical assistant. How can I help you today?",
+                    message: "Hello! I'm Dr Malik. How can I help you today?",
                     sender: 'bot',
                     timestamp: new Date().toISOString(),
                 }];
@@ -60,7 +60,7 @@ class ChatManager {
                 this.chatHistory = [
                     {
                         id: 1,
-                        message: "Hello! I'm your medical assistant. How can I help you today?",
+                        message: "Hello! I'm Dr Malik. How can I help you today?",
                         sender: 'bot',
                         timestamp: new Date().toISOString()
                     }
@@ -108,8 +108,13 @@ class ChatManager {
     createMessageHtml(message) {
         const isBot = message.sender === 'bot';
         const timestamp = new Date(message.timestamp).toLocaleTimeString();
-        const provider = message.provider
-            ? `<div class="message-time">via ${message.provider}</div>`
+        const providerLabel = message.provider
+            ? (['ollama', 'groq', 'gemini', 'llama', 'qwen'].includes(String(message.provider).toLowerCase())
+                ? 'Dr Malik'
+                : message.provider)
+            : '';
+        const provider = providerLabel
+            ? `<div class="message-time">via ${providerLabel}</div>`
             : '';
         
         return `
@@ -231,7 +236,7 @@ class ChatManager {
         } else if (message.includes('hospital') || message.includes('er')) {
             return "I can help you find nearby hospitals and emergency rooms. Would you like me to show you the closest medical facilities?";
         } else if (message.includes('hello') || message.includes('hi')) {
-            return "Hello! I'm your medical assistant. I can help you with general health information, find nearby medical facilities, and provide guidance on when to seek medical care.";
+            return "Hello! I'm Dr Malik. I can help you with general health information, find nearby medical facilities, and provide guidance on when to seek medical care.";
         } else {
             return "I'm here to help with general health information and finding medical resources. For specific medical advice, please consult with a healthcare professional. How else can I assist you?";
         }
@@ -302,7 +307,7 @@ class ChatManager {
                 <div class="chat-message bot">
                     <div class="message-bubble bot">
                         <i class="fas fa-robot me-2"></i>
-                        Hello! I'm your medical assistant. How can I help you today? 
+                        Hello! I'm Dr Malik. How can I help you today? 
                         I can provide information about symptoms, medications, emergency procedures, 
                         and help you find nearby medical facilities.
                     </div>
