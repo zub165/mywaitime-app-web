@@ -810,13 +810,17 @@ class ERWaitTimeApp {
                     <!-- Forgot Password Form -->
                     <div id="forgot-form" class="auth-form">
                         <h3>Reset Password</h3>
-                        <p style="color:#666;font-size:0.9rem;text-align:center;">Enter your email. We will send a reset link if an account exists.</p>
+                        <p style="color:#666;font-size:0.9rem;text-align:center;">Enter your email. We email a 6-digit code via GoDaddy SMTP if an account exists.</p>
                         <form id="forgotForm">
                             <div class="form-group">
                                 <input type="email" id="forgot-email" placeholder="Email" required>
                             </div>
-                            <button type="submit" class="btn-primary">Send Reset Link</button>
+                            <button type="submit" class="btn-primary" id="forgot-submit-btn">Send Reset Code</button>
                         </form>
+                        <div id="forgot-status" style="display:none;margin-top:1rem;padding:0.75rem 1rem;border-radius:8px;font-size:0.9rem;"></div>
+                        <p style="text-align:center;margin-top:1rem;font-size:0.9rem;">
+                            <a href="reset-password.html" id="goto-reset-page" style="color:#667eea;">Already have a code? Reset password</a>
+                        </p>
                     </div>
                 </div>
 
@@ -1140,16 +1144,47 @@ class ERWaitTimeApp {
     }
 
     async handleForgotPassword() {
+        const statusEl = document.getElementById('forgot-status');
+        const btn = document.getElementById('forgot-submit-btn');
+        const showInline = (message, ok) => {
+            if (!statusEl) return;
+            statusEl.style.display = 'block';
+            statusEl.style.background = ok ? '#ecfdf5' : '#fef2f2';
+            statusEl.style.color = ok ? '#065f46' : '#991b1b';
+            statusEl.style.border = ok ? '1px solid #a7f3d0' : '1px solid #fecaca';
+            statusEl.innerHTML = message;
+        };
         try {
             const email = document.getElementById('forgot-email').value.trim();
+            if (!email) {
+                showInline('Please enter your email address.', false);
+                return;
+            }
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Sending…';
+            }
             const result = await window.AuthService.requestPasswordReset(email);
             if (result.success) {
-                this.showNotification(result.message || 'Check your email for a reset link.', 'success');
+                const resetHref = `reset-password.html?email=${encodeURIComponent(email)}`;
+                showInline(
+                    `<strong>Reset code sent</strong> (if that email has an account).<br>` +
+                    `Check <em>${email}</em> for a 6-digit code from <code>noreply@mywaitime.com</code> ` +
+                    `(GoDaddy SMTP). Also check spam.<br>` +
+                    `<a href="${resetHref}" style="color:#065f46;font-weight:600;">Enter code &amp; set new password →</a>`,
+                    true
+                );
+                this.showNotification(result.message || 'Check your email for the reset code.', 'success');
             } else {
-                this.showNotification(result.message || 'Could not start password reset.', 'danger');
+                showInline(result.message || 'Could not start password reset.', false);
             }
         } catch (error) {
-            this.showNotification('Password reset error: ' + error.message, 'danger');
+            showInline('Password reset error: ' + error.message, false);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = 'Send Reset Code';
+            }
         }
     }
 }
