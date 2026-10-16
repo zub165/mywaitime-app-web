@@ -810,7 +810,7 @@ class ERWaitTimeApp {
                     <!-- Forgot Password Form -->
                     <div id="forgot-form" class="auth-form">
                         <h3>Reset Password</h3>
-                        <p style="color:#666;font-size:0.9rem;text-align:center;">Enter your email. We email a 6-digit code via GoDaddy SMTP if an account exists.</p>
+                        <p style="color:#666;font-size:0.9rem;text-align:center;">We email one 6-digit code. Clicking Send again keeps the same code until it expires.</p>
                         <form id="forgotForm">
                             <div class="form-group">
                                 <input type="email" id="forgot-email" placeholder="Email" required>
@@ -818,9 +818,21 @@ class ERWaitTimeApp {
                             <button type="submit" class="btn-primary" id="forgot-submit-btn">Send Reset Code</button>
                         </form>
                         <div id="forgot-status" style="display:none;margin-top:1rem;padding:0.75rem 1rem;border-radius:8px;font-size:0.9rem;"></div>
-                        <p style="text-align:center;margin-top:1rem;font-size:0.9rem;">
-                            <a href="reset-password.html" id="goto-reset-page" style="color:#667eea;">Already have a code? Reset password</a>
-                        </p>
+                        <div id="forgot-complete" style="display:none;margin-top:1.25rem;padding-top:1rem;border-top:1px solid #e5e7eb;">
+                            <p style="font-size:0.9rem;color:#333;margin:0 0 0.75rem 0;font-weight:600;">Enter code from email + new password</p>
+                            <form id="forgotCompleteForm">
+                                <div class="form-group">
+                                    <input type="text" id="forgot-code" placeholder="6-digit code" inputmode="numeric" maxlength="8" autocomplete="one-time-code" required>
+                                </div>
+                                <div class="form-group">
+                                    <input type="password" id="forgot-new-password" placeholder="New password" required>
+                                </div>
+                                <div class="form-group">
+                                    <input type="password" id="forgot-confirm-password" placeholder="Confirm new password" required>
+                                </div>
+                                <button type="submit" class="btn-primary" id="forgot-complete-btn">Update Password</button>
+                            </form>
+                        </div>
                     </div>
                 </div>
 
@@ -1066,6 +1078,14 @@ class ERWaitTimeApp {
             });
         }
 
+        const forgotCompleteForm = document.getElementById('forgotCompleteForm');
+        if (forgotCompleteForm) {
+            forgotCompleteForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await this.handleForgotComplete();
+            });
+        }
+
         const gotoForgot = document.getElementById('goto-forgot');
         if (gotoForgot) {
             gotoForgot.addEventListener('click', (e) => {
@@ -1143,21 +1163,22 @@ class ERWaitTimeApp {
         }
     }
 
-    async handleForgotPassword() {
+    _showForgotStatus(message, ok) {
         const statusEl = document.getElementById('forgot-status');
+        if (!statusEl) return;
+        statusEl.style.display = 'block';
+        statusEl.style.background = ok ? '#ecfdf5' : '#fef2f2';
+        statusEl.style.color = ok ? '#065f46' : '#991b1b';
+        statusEl.style.border = ok ? '1px solid #a7f3d0' : '1px solid #fecaca';
+        statusEl.innerHTML = message;
+    }
+
+    async handleForgotPassword() {
         const btn = document.getElementById('forgot-submit-btn');
-        const showInline = (message, ok) => {
-            if (!statusEl) return;
-            statusEl.style.display = 'block';
-            statusEl.style.background = ok ? '#ecfdf5' : '#fef2f2';
-            statusEl.style.color = ok ? '#065f46' : '#991b1b';
-            statusEl.style.border = ok ? '1px solid #a7f3d0' : '1px solid #fecaca';
-            statusEl.innerHTML = message;
-        };
         try {
             const email = document.getElementById('forgot-email').value.trim();
             if (!email) {
-                showInline('Please enter your email address.', false);
+                this._showForgotStatus('Please enter your email address.', false);
                 return;
             }
             if (btn) {
@@ -1166,24 +1187,74 @@ class ERWaitTimeApp {
             }
             const result = await window.AuthService.requestPasswordReset(email);
             if (result.success) {
-                const resetHref = `reset-password.html?email=${encodeURIComponent(email)}`;
-                showInline(
-                    `<strong>Reset code sent</strong> (if that email has an account).<br>` +
-                    `Check <em>${email}</em> for a 6-digit code from <code>noreply@mywaitime.com</code> ` +
-                    `(GoDaddy SMTP). Also check spam.<br>` +
-                    `<a href="${resetHref}" style="color:#065f46;font-weight:600;">Enter code &amp; set new password →</a>`,
+                this._showForgotStatus(
+                    `<strong>Code sent</strong> to <em>${email}</em> (if an account exists).<br>` +
+                    `From <code>noreply@mywaitime.com</code> via GoDaddy — check inbox &amp; spam.<br>` +
+                    `<strong>Tip:</strong> clicking Send again keeps the <em>same</em> code until it expires. ` +
+                    `Enter it below — do not mix codes from older emails.`,
                     true
                 );
-                this.showNotification(result.message || 'Check your email for the reset code.', 'success');
+                const complete = document.getElementById('forgot-complete');
+                if (complete) complete.style.display = 'block';
+                document.getElementById('forgot-code')?.focus();
             } else {
-                showInline(result.message || 'Could not start password reset.', false);
+                this._showForgotStatus(result.message || 'Could not start password reset.', false);
             }
         } catch (error) {
-            showInline('Password reset error: ' + error.message, false);
+            this._showForgotStatus('Password reset error: ' + error.message, false);
         } finally {
             if (btn) {
                 btn.disabled = false;
                 btn.textContent = 'Send Reset Code';
+            }
+        }
+    }
+
+    async handleForgotComplete() {
+        const btn = document.getElementById('forgot-complete-btn');
+        try {
+            const email = document.getElementById('forgot-email')?.value.trim();
+            const code = (document.getElementById('forgot-code')?.value || '').replace(/\D/g, '');
+            const newPassword = document.getElementById('forgot-new-password')?.value || '';
+            const confirmPassword = document.getElementById('forgot-confirm-password')?.value || '';
+            if (!email) {
+                this._showForgotStatus('Email is required.', false);
+                return;
+            }
+            if (code.length !== 6) {
+                this._showForgotStatus('Enter the 6-digit code from your email.', false);
+                return;
+            }
+            if (newPassword !== confirmPassword) {
+                this._showForgotStatus('Passwords do not match.', false);
+                return;
+            }
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Updating…';
+            }
+            const result = await window.AuthService.confirmPasswordReset({
+                email,
+                code,
+                new_password: newPassword,
+            });
+            if (result.success) {
+                this._showForgotStatus(
+                    '<strong>Password updated.</strong> Switch to Login and sign in with your new password.',
+                    true
+                );
+                setTimeout(() => {
+                    document.querySelector('.auth-tab[data-auth-tab="login"]')?.click();
+                }, 1200);
+            } else {
+                this._showForgotStatus(result.message || 'Could not update password.', false);
+            }
+        } catch (error) {
+            this._showForgotStatus('Reset error: ' + error.message, false);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = 'Update Password';
             }
         }
     }

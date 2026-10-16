@@ -224,18 +224,22 @@
         const body = { new_password };
         if (uid) body.uid = uid;
         if (token) body.token = token;
-        if (email) body.email = email;
-        if (code) body.code = code;
+        if (email) body.email = String(email).trim();
+        if (code) body.code = String(code).replace(/\D/g, '');
         const { result } = await apiPost('/auth/reset-password/', body);
         if (result.status === 'success') {
             return { success: true, message: result.message || 'Password reset successfully' };
         }
-        const errDetail = result.errors ? JSON.stringify(result.errors) : '';
-        return {
-            success: false,
-            message: errDetail ? `${result.message || 'Password reset failed'}: ${errDetail}` : (result.message || 'Password reset failed'),
-            errors: result.errors,
-        };
+        let msg = result.message || 'Password reset failed';
+        if (result.errors && typeof result.errors === 'object') {
+            const parts = [];
+            Object.values(result.errors).forEach((v) => {
+                if (Array.isArray(v)) parts.push(...v.map(String));
+                else if (v) parts.push(String(v));
+            });
+            if (parts.length) msg = parts.join(' ');
+        }
+        return { success: false, message: msg, errors: result.errors };
     }
 
     function redirectAfterAuth(user, { isNewUser } = {}) {
