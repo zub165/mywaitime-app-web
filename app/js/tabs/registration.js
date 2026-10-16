@@ -20,6 +20,17 @@ class RegistrationManager {
             emergency: false,
             consent: false
         };
+        const host = (typeof location !== 'undefined' && location.hostname) || '';
+        const productionApi = host.includes('mywaitime.com') || host.includes('mywaittime.com') || host.includes('github.io');
+        this.apiBase =
+            (window.AuthService && window.AuthService.API_BASE) ||
+            (window.djangoAPI && window.djangoAPI.baseURL) ||
+            (productionApi ? 'https://api.mywaitime.com/api' : '/api');
+    }
+
+    apiUrl(path) {
+        const p = path.startsWith('/') ? path : `/${path}`;
+        return `${this.apiBase}${p}`;
     }
 
     /**
@@ -774,8 +785,8 @@ class RegistrationManager {
             this.aiFeaturesUsed++;
             this.updateProgress();
             
-            // Call Django AI API
-            const response = await fetch(`/api/ai/medication/search/?name=${encodeURIComponent(medicationName)}`);
+            // Call Django AI API (absolute host on GitHub Pages)
+            const response = await fetch(this.apiUrl(`/ai/medication/search/?name=${encodeURIComponent(medicationName)}`));
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const data = await response.json();
             
@@ -868,8 +879,8 @@ class RegistrationManager {
                 patientAge = today.getFullYear() - birthDate.getFullYear();
             }
             
-            // Call Django AI API
-            const response = await fetch('/api/ai/symptoms/analyze/', {
+            // Call Django AI API (absolute host on GitHub Pages)
+            const response = await fetch(this.apiUrl('/ai/symptoms/analyze/'), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

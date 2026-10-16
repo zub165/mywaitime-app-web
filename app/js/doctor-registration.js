@@ -350,14 +350,25 @@ class DoctorRegistrationSystem {
             password,
         });
 
-        const user = loginResult.success
-            ? window.AuthService.saveSession({ ...loginResult.user, role: 'doctor' })
-            : window.AuthService.saveSession({
-                ...(registerResult.data || {}),
-                email: data.email,
-                full_name: `${data.firstName} ${data.lastName}`,
-                role: 'doctor',
-            });
+        if (!loginResult.success || !loginResult.user || !loginResult.user.token) {
+            // Do not save a tokenless session — wait-time/feedback writes would fail with 401
+            return {
+                success: true,
+                doctor: {
+                    email: data.email,
+                    full_name: `${data.firstName} ${data.lastName}`,
+                    role: 'doctor',
+                    ...(registerResult.data || {}),
+                },
+                temporaryPassword: password,
+                needsLogin: true,
+                message:
+                    (registerResult.message || 'Doctor registered.') +
+                    ' Please log in with the temporary password to activate your session.',
+            };
+        }
+
+        const user = window.AuthService.saveSession({ ...loginResult.user, role: 'doctor' });
 
         return {
             success: true,
@@ -384,7 +395,9 @@ class DoctorRegistrationSystem {
 
     handleSuccessfulRegistration(result) {
         localStorage.setItem('doctorData', JSON.stringify(result.doctor));
-        if (window.AuthService) {
+
+        const hasToken = Boolean(result.doctor && result.doctor.token);
+        if (hasToken && window.AuthService) {
             window.AuthService.saveSession({ ...result.doctor, role: 'doctor' });
         }
 
@@ -392,8 +405,19 @@ class DoctorRegistrationSystem {
             ? ` Temporary password: ${result.temporaryPassword} (save it now).`
             : '';
 
+        if (result.needsLogin || !hasToken) {
+            this.showNotification(
+                `Doctor account created.${tempHint} Please log in to continue.`,
+                'success'
+            );
+            setTimeout(() => {
+                window.location.href = 'smart-login.html';
+            }, 3500);
+            return;
+        }
+
         this.showNotification(
-            `🎉 Welcome Dr. ${result.doctor.full_name || 'Doctor'}! Registration successful.${tempHint}`,
+            `Welcome Dr. ${result.doctor.full_name || 'Doctor'}! Registration successful.${tempHint}`,
             'success'
         );
 

@@ -336,12 +336,28 @@ class ERWaitManager {
             </div>
         `;
 
-        // Modals must live on <body>. Inside #tab-content (fade/transform)
-        // Bootstrap backdrops cover the dialog → grey, uneditable fields.
+        this.mountModalsToBody();
+    }
+
+    /**
+     * Move ER Wait modals to document.body, replacing any stale copies.
+     * Duplicate IDs from prior tab visits would leave getElementById stuck on a dead modal.
+     */
+    mountModalsToBody() {
         ['updateWaitTimeModal', 'locationModal'].forEach((id) => {
-            const el = document.getElementById(id);
-            if (el && el.parentElement !== document.body) {
-                document.body.appendChild(el);
+            const fresh = document.querySelector(`#tab-content #${id}`);
+            // Dispose/remove every existing instance (usually on body from last visit)
+            document.querySelectorAll(`#${id}`).forEach((el) => {
+                if (fresh && el === fresh) return;
+                try {
+                    if (typeof bootstrap !== 'undefined') {
+                        bootstrap.Modal.getInstance(el)?.dispose();
+                    }
+                } catch (_) { /* ignore */ }
+                el.remove();
+            });
+            if (fresh && fresh.parentElement !== document.body) {
+                document.body.appendChild(fresh);
             }
         });
     }
@@ -666,12 +682,9 @@ class ERWaitManager {
      * Keep Bootstrap modal on document.body so backdrop does not block typing.
      */
     ensureWaitTimeModalOnBody() {
-        let modalElement = document.getElementById('updateWaitTimeModal');
-        if (!modalElement) return null;
-        if (modalElement.parentElement !== document.body) {
-            document.body.appendChild(modalElement);
-        }
-        return modalElement;
+        this.mountModalsToBody();
+        const modalElement = document.getElementById('updateWaitTimeModal');
+        return modalElement || null;
     }
 
     enableWaitTimeFormInputs() {
@@ -1156,11 +1169,12 @@ class ERWaitManager {
             });
         }
 
-        // Submit wait time update
+        // Submit wait time update (rebind each init — modal may be a fresh DOM node)
         const submitBtn = document.getElementById('submit-wait-time-update');
-        if (submitBtn && !submitBtn._bound) {
-            submitBtn._bound = true;
-            submitBtn.addEventListener('click', (e) => {
+        if (submitBtn) {
+            const nextBtn = submitBtn.cloneNode(true);
+            submitBtn.parentNode.replaceChild(nextBtn, submitBtn);
+            nextBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 this.submitWaitTimeUpdate();
             });
