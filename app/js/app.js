@@ -289,6 +289,16 @@ class ERWaitTimeApp {
      */
     async loadTab(tabName, updateHistory = true) {
         if (this.currentTab === tabName && !updateHistory) return;
+
+        if (window.ERW_PAYWALL && window.ERW_PAYWALL.isGatedTab(tabName)) {
+            const allowed = window.ERW_PAYWALL.require(tabName, {
+                onUnlock: () => this.loadTab(tabName, true)
+            });
+            if (!allowed) {
+                this.renderLockedTab(tabName);
+                return;
+            }
+        }
         
         console.log(`Loading tab: ${tabName}`);
         this.currentTab = tabName;
@@ -330,6 +340,30 @@ class ERWaitTimeApp {
             this.showNotification(`Failed to load ${tabName} content`, 'danger');
         } finally {
             this.hideLoading();
+        }
+    }
+
+    /**
+     * Placeholder shown when a Premium-gated tab is opened without Premium
+     */
+    renderLockedTab(tabName) {
+        const container = document.getElementById('tab-content');
+        if (!container) return;
+        const label = tabName === 'records' ? 'Medical Records' : tabName;
+        container.innerHTML = `
+            <div class="erw-pw-locked">
+                <div style="font-size:2rem;">&#128274;</div>
+                <h3>${label} is a Premium feature</h3>
+                <p>Subscribe in the ER Wait Time app to unlock it here.</p>
+                <button class="btn btn-primary" id="erw-pw-open">See Premium</button>
+            </div>`;
+        const btn = document.getElementById('erw-pw-open');
+        if (btn && window.ERW_PAYWALL) {
+            btn.addEventListener('click', () => {
+                window.ERW_PAYWALL.require(tabName, {
+                    onUnlock: () => this.loadTab(tabName, true)
+                });
+            });
         }
     }
 

@@ -22,6 +22,7 @@
     <link rel="icon" type="image/png" href="/icon-192.png">
     <link rel="apple-touch-icon" href="/icon-192.png">
     <link rel="stylesheet" href="/install.css">
+    <link rel="stylesheet" href="/paywall.css">
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -96,6 +97,9 @@
                     <a href="https://play.google.com/store/apps/details?id=com.easytechnologiez.ERTime" id="get-the-app" data-store-content="navbar" data-store-placement="webapp_navbar" class="btn btn-light btn-sm me-3" target="_blank" rel="noopener noreferrer" style="font-weight: 600;">
                         <i class="fas fa-download me-1"></i>Get the App
                     </a>
+                    <button type="button" id="erw-premium-nav" class="btn btn-warning btn-sm me-3" style="font-weight: 600;">
+                        <i class="fas fa-crown me-1"></i>Premium
+                    </button>
                     <div class="me-3 position-relative">
                         <span class="badge bg-success me-2" style="cursor: pointer;" onclick="app.toggleStatusDashboard()">
                             <i class="fas fa-circle me-1" style="font-size: 0.5rem;"></i>Backend Connected
@@ -152,6 +156,7 @@
     
     <!-- Application Scripts -->
     <script src="/app/js/auth.js?v=20261016l"></script>
+    <script src="/app/js/paywall.js?v=20261021a"></script>
     <script src="/app/js/app.js?v=20261016l"></script>
     <script src="/app/js/router.js?v=20261016l"></script>
     <script src="/app/js/api.js?v=20261016l"></script>
@@ -179,5 +184,14 @@
     </script>
     <script src="/analytics.js"></script>
     <script src="/app-install.js"></script>
+    <script>
+        (function () {
+            var btn = document.getElementById('erw-premium-nav');
+            if (!btn || !window.ERW_PAYWALL) return;
+            btn.addEventListener('click', function () {
+                window.ERW_PAYWALL.open();
+            });
+        })();
+    </script>
 </body>
 </html>
