@@ -78,6 +78,9 @@
                 
                 <!-- User Info & Status -->
                 <div class="navbar-text d-flex align-items-center">
+                    <a href="https://play.google.com/store/apps/details?id=com.easytechnologiez.ERTime" id="get-the-app" class="btn btn-light btn-sm me-3" target="_blank" rel="noopener noreferrer" style="font-weight: 600;">
+                        <i class="fas fa-download me-1"></i>Get the App
+                    </a>
                     <div class="me-3 position-relative">
                         <span class="badge bg-success me-2" style="cursor: pointer;" onclick="app.toggleStatusDashboard()">
                             <i class="fas fa-circle me-1" style="font-size: 0.5rem;"></i>Backend Connected
@@ -147,5 +150,17 @@
     <script src="js/tabs/registration.js?v=20261016l"></script>
     <script src="js/tabs/records.js?v=20261016l"></script>
     <script src="js/tabs/directions.js?v=20261016l"></script>
+
+    <script>
+        (function () {
+            var btn = document.getElementById('get-the-app');
+            if (!btn) return;
+            var ua = navigator.userAgent || '';
+            if (/iPhone|iPad|iPod/i.test(ua)) {
+                btn.href = 'https://apps.apple.com/ca/app/er-wait-time-emergency-wait/id1477437465';
+                btn.innerHTML = '<i class="fas fa-download me-1"></i>App Store';
+            }
+        })();
+    </script>
 </body>
 </html>
