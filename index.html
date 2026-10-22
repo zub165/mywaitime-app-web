@@ -175,7 +175,7 @@
                 <a href="privacy.html">Privacy</a>
                 <a href="support.html">Support</a>
             </div>
-            <a href="https://play.google.com/store/apps/details?id=com.easytechnologiez.ERTime" class="btn btn-primary" data-store="android" target="_blank" rel="noopener noreferrer">Get the App</a>
+            <a href="https://play.google.com/store/apps/details?id=com.easytechnologiez.ERTime" class="btn btn-primary" data-store-link="android" target="_blank" rel="noopener noreferrer">Get the App</a>
         </nav>
     </header>
 
@@ -185,7 +185,7 @@
             <h1>Know Your ER Wait Time<br><span class="grad">Before You Go</span></h1>
             <p class="lead">ER Wait Time shows live emergency room wait times, AI-powered predictions, and fast directions so you reach the right hospital when every minute counts.</p>
             <div class="hero-cta">
-                <a href="https://play.google.com/store/apps/details?id=com.easytechnologiez.ERTime" class="btn btn-primary" data-store="android" target="_blank" rel="noopener noreferrer">&#129418; Get it on Google Play</a>
+                <a href="https://play.google.com/store/apps/details?id=com.easytechnologiez.ERTime" class="btn btn-primary" data-store="android" target="_blank" rel="noopener noreferrer">&#129430; Get it on Google Play</a>
                 <a href="https://apps.apple.com/ca/app/er-wait-time-emergency-wait/id1477437465" class="btn btn-ghost" data-store="ios" target="_blank" rel="noopener noreferrer">&#128241; Download on the App Store</a>
             </div>
             <p style="margin-top:18px; font-size:0.95rem;">
@@ -209,7 +209,7 @@
                     <div class="platform-icon p-android">&#129428;</div>
                     <h3>Android</h3>
                     <p>Free on Google Play for Android phones and tablets. Live wait times, AI predictions and turn-by-turn directions.</p>
-                    <a href="https://play.google.com/store/apps/details?id=com.easytechnologiez.ERTime" class="btn btn-primary" data-store="android" target="_blank" rel="noopener noreferrer">&#129418; Get it on Google Play</a>
+                    <a href="https://play.google.com/store/apps/details?id=com.easytechnologiez.ERTime" class="btn btn-primary" data-store="android" target="_blank" rel="noopener noreferrer">&#129430; Get it on Google Play</a>
                 </div>
                 <div class="platform-card">
                     <div class="platform-icon p-ios"></div>
@@ -295,7 +295,7 @@
             <h2>Ready to Skip the Wait?</h2>
             <p>Download ER Wait Time free on Android and check live wait times before you leave home.</p>
             <div class="hero-cta">
-                <a href="https://play.google.com/store/apps/details?id=com.easytechnologiez.ERTime" class="btn" data-store="android" target="_blank" rel="noopener noreferrer">&#129418; Get it on Google Play</a>
+                <a href="https://play.google.com/store/apps/details?id=com.easytechnologiez.ERTime" class="btn" data-store="android" target="_blank" rel="noopener noreferrer">&#129430; Get it on Google Play</a>
                 <a href="https://apps.apple.com/ca/app/er-wait-time-emergency-wait/id1477437465" class="btn" data-store="ios" target="_blank" rel="noopener noreferrer">&#128241; Download on the App Store</a>
             </div>
         </section>
@@ -310,8 +310,8 @@
                 </div>
                 <div class="footer-col">
                     <h4>App</h4>
-                    <a href="https://play.google.com/store/apps/details?id=com.easytechnologiez.ERTime" data-store="android" target="_blank" rel="noopener noreferrer">Android App (Free)</a>
-                    <a href="https://apps.apple.com/ca/app/er-wait-time-emergency-wait/id1477437465" data-store="ios" target="_blank" rel="noopener noreferrer">iOS App</a>
+                    <a href="https://play.google.com/store/apps/details?id=com.easytechnologiez.ERTime" target="_blank" rel="noopener noreferrer">Android App (Free)</a>
+                    <a href="https://apps.apple.com/ca/app/er-wait-time-emergency-wait/id1477437465" target="_blank" rel="noopener noreferrer">iOS App</a>
                     <a href="app/">Web App</a>
                 </div>
                 <div class="footer-col">
@@ -338,16 +338,27 @@
             var ua = navigator.userAgent || '';
             var isIOS = /iPhone|iPad|iPod/i.test(ua);
             var isAndroid = /Android/i.test(ua);
+
+            var linkNodes = document.querySelectorAll('[data-store-link]');
+            for (var j = 0; j < linkNodes.length; j++) {
+                if (isIOS && linkNodes[j].getAttribute('data-store-link') === 'android') {
+                    linkNodes[j].href = IOS;
+                }
+            }
+
             var nodes = document.querySelectorAll('[data-store]');
             for (var i = 0; i < nodes.length; i++) {
                 var el = nodes[i];
                 var kind = el.getAttribute('data-store');
-                if (kind === 'android' && isIOS) {
-                    el.href = IOS;
-                    el.textContent = '📲 Download on the App Store';
-                } else if (kind === 'ios' && isAndroid) {
+                var inCard = !!el.closest('.platform-card');
+                if (kind === 'android') {
                     el.href = PLAY;
-                    el.textContent = '🤖 Get it on Google Play';
+                    if (isAndroid) el.textContent = '🤖 Get it on Google Play';
+                    if (isIOS && !inCard) el.style.display = 'none';
+                } else {
+                    el.href = IOS;
+                    if (isIOS) el.textContent = '📲 Download on the App Store';
+                    if (isAndroid && !inCard) el.style.display = 'none';
                 }
             }
         })();
