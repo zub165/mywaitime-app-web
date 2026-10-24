@@ -1,20 +1,15 @@
 /**
  * ER Wait Time Premium — web paywall.
  *
- * Mirrors the in-app subscription (product `er_premium_monthly`, $3.99/month,
- * 7-day trial). The web app never takes payment: the primary button deep-links
- * to Google Play / the App Store so the purchase is handled by the store, and
- * the web app grants a matching 7-day trial so the feature stays usable.
+ * Premium is purchased and verified in the native app. The web app does not
+ * grant or infer entitlement because browser storage is not secure or shared
+ * with App Store and Google Play purchases.
  */
-
-const PREMIUM_STATE_KEY = 'erw_premium_state';
 
 const PREMIUM_DEFAULTS = {
     productId: 'er_premium_monthly',
     price: '$3.99',
     period: '/month',
-    trialDays: 7,
-    trialLabel: '7-day free trial',
     benefits: [
         'Ad-free experience',
         'Wait-time trends & alerts',
@@ -41,41 +36,8 @@ class PremiumPaywall {
         this.onUnlock = null;
     }
 
-    /**
-     * Entitlement state (local): { active: bool, trialUntil: timestamp }
-     */
-    state() {
-        try {
-            return JSON.parse(localStorage.getItem(PREMIUM_STATE_KEY) || '{}') || {};
-        } catch (e) {
-            return {};
-        }
-    }
-
-    saveState(state) {
-        try {
-            localStorage.setItem(PREMIUM_STATE_KEY, JSON.stringify(state));
-        } catch (e) { /* storage unavailable */ }
-    }
-
     isPremium() {
-        const state = this.state();
-        if (state.active) return true;
-        return !!state.trialUntil && state.trialUntil > Date.now();
-    }
-
-    trialDaysLeft() {
-        const state = this.state();
-        if (!state.trialUntil) return 0;
-        const left = Math.ceil((state.trialUntil - Date.now()) / 86400000);
-        return left > 0 ? left : 0;
-    }
-
-    startTrial() {
-        const state = this.state();
-        state.trialUntil = Date.now() + this.config.trialDays * 86400000;
-        this.saveState(state);
-        this.track('paywall_trial_start', { trial_days: this.config.trialDays });
+        return false;
     }
 
     isGatedTab(tabName) {
@@ -134,7 +96,6 @@ class PremiumPaywall {
         const benefits = this.config.benefits
             .map(item => '<li>' + item + '</li>')
             .join('');
-        const trialLeft = this.trialDaysLeft();
 
         const overlay = document.createElement('div');
         overlay.className = 'erw-pw-overlay';
@@ -143,24 +104,17 @@ class PremiumPaywall {
             '<button class="erw-pw-close" aria-label="Close">&times;</button>' +
             '<span class="erw-pw-badge">Premium</span>' +
             '<h2 class="erw-pw-title">' + title + '</h2>' +
-            '<p class="erw-pw-price"><strong>' + this.config.price + this.config.period + '</strong> · ' +
-            this.config.trialLabel + (trialLeft > 0 ? ' (' + trialLeft + ' day' + (trialLeft === 1 ? '' : 's') + ' left)' : '') + '</p>' +
+            '<p class="erw-pw-price"><strong>' + this.config.price + this.config.period + '</strong> in the mobile app</p>' +
             '<p class="erw-pw-body">' + body + '</p>' +
             '<ul class="erw-pw-list">' + benefits + '</ul>' +
-            '<a class="erw-pw-cta" id="erw-pw-subscribe" href="' + this.storeUrl(feature) + '" target="_blank" rel="noopener noreferrer">Subscribe in the app</a>' +
-            '<button class="erw-pw-cta alt" id="erw-pw-trial">' + this.config.trialLabel + ' on the web</button>' +
-            '<p class="erw-pw-note">Subscriptions are billed by Google Play or the App Store and can be cancelled there. ' +
+            '<a class="erw-pw-cta" id="erw-pw-subscribe" href="' + this.storeUrl(feature) + '" target="_blank" rel="noopener noreferrer">Get the mobile app</a>' +
+            '<p class="erw-pw-note">Premium purchases are billed and verified by Google Play or the App Store. ' +
             'Hospital searches and wait times stay free for everyone.</p>' +
             '</div>';
 
         overlay.querySelector('.erw-pw-close').addEventListener('click', () => this.close('close'));
         overlay.querySelector('#erw-pw-subscribe').addEventListener('click', () => {
             this.track('paywall_cta_click', { feature: feature, store: this.platform() === 'ios' ? 'app_store' : 'google_play' });
-        });
-        overlay.querySelector('#erw-pw-trial').addEventListener('click', () => {
-            this.startTrial();
-            this.close('trial');
-            if (typeof this.onUnlock === 'function') this.onUnlock();
         });
         overlay.addEventListener('click', (event) => {
             if (event.target === overlay) this.close('backdrop');

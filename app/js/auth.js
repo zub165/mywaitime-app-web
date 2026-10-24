@@ -154,7 +154,6 @@
             };
         }
 
-        // Prefer enhanced register (assigns doctor group + welcome email).
         let { result } = await apiPost('/auth/enhanced-register/', {
             email,
             password,
@@ -167,7 +166,6 @@
             specialty: data.specialty || undefined,
         });
 
-        // Fall back to role register, then basic register.
         if (result.status !== 'success') {
             const roleReg = await apiPost('/auth/register/role/', {
                 username: username || `user_${Date.now()}`,
@@ -186,10 +184,8 @@
                 username: username || `user_${Date.now()}`,
                 email,
                 password,
-                role,
                 first_name: data.first_name || (fullName ? fullName.split(' ')[0] : ''),
                 last_name: data.last_name || (fullName ? fullName.split(' ').slice(1).join(' ') : ''),
-                phone: data.phone || undefined,
             });
             result = basic.result;
         }
@@ -209,6 +205,28 @@
             success: false,
             message: errDetail ? `${result.message || 'Registration failed'}: ${errDetail}` : (result.message || 'Registration failed'),
             errors: result.errors,
+        };
+    }
+
+    async function verifyRegistrationEmail(email, code) {
+        const { result } = await apiPost('/auth/verify-registration-email/', {
+            email: (email || '').trim(),
+            code: String(code || '').replace(/\D/g, ''),
+        });
+        return {
+            success: result.status === 'success',
+            message: result.message || 'Email verification failed',
+            errors: result.errors,
+        };
+    }
+
+    async function resendRegistrationVerification(email) {
+        const { result } = await apiPost('/auth/resend-registration-verification/', {
+            email: (email || '').trim(),
+        });
+        return {
+            success: result.status === 'success',
+            message: result.message || 'Could not resend verification code',
         };
     }
 
@@ -261,6 +279,8 @@
         getSession,
         login,
         registerAccount,
+        verifyRegistrationEmail,
+        resendRegistrationVerification,
         requestPasswordReset,
         confirmPasswordReset,
         rememberRoleForEmail,

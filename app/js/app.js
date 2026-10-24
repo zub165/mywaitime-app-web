@@ -822,6 +822,16 @@ class ERWaitTimeApp {
                             <input type="hidden" id="reg-username" value="">
                             <button type="submit" class="btn-primary">Register</button>
                         </form>
+                        <div id="registration-verification" style="display:none;margin-top:1.25rem;padding-top:1rem;border-top:1px solid #e5e7eb;">
+                            <p style="font-size:0.9rem;color:#333;margin:0 0 0.75rem 0;font-weight:600;">Enter the 6-digit code sent to your email</p>
+                            <form id="registrationVerificationForm">
+                                <div class="form-group">
+                                    <input type="text" id="registration-code" placeholder="6-digit verification code" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required>
+                                </div>
+                                <button type="submit" class="btn-primary" id="registration-verify-btn">Verify Email</button>
+                            </form>
+                            <button type="button" id="registration-resend-btn" style="display:block;width:100%;margin-top:0.75rem;border:0;background:none;color:#667eea;cursor:pointer;">Send a new code</button>
+                        </div>
                     </div>
 
                     <!-- Login Form -->
@@ -1097,6 +1107,30 @@ class ERWaitTimeApp {
             await this.handleRegistration();
         });
 
+        const registrationVerificationForm = document.getElementById('registrationVerificationForm');
+        if (registrationVerificationForm) {
+            registrationVerificationForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await this.handleRegistrationVerification();
+            });
+        }
+
+        const registrationResendButton = document.getElementById('registration-resend-btn');
+        if (registrationResendButton) {
+            registrationResendButton.addEventListener('click', async () => {
+                const email = document.getElementById('reg-email').value.trim();
+                registrationResendButton.disabled = true;
+                try {
+                    const result = await window.AuthService.resendRegistrationVerification(email);
+                    this.showNotification(result.message, result.success ? 'success' : 'danger');
+                } catch (error) {
+                    this.showNotification('Could not resend code: ' + error.message, 'danger');
+                } finally {
+                    registrationResendButton.disabled = false;
+                }
+            });
+        }
+
         // Login form
         const loginForm = document.getElementById('loginForm');
         loginForm.addEventListener('submit', async (e) => {
@@ -1150,13 +1184,42 @@ class ERWaitTimeApp {
             });
 
             if (result.success) {
-                this.showNotification('Registration successful! Please login.', 'success');
-                document.querySelector('.auth-tab[data-auth-tab="login"]')?.click();
+                document.getElementById('registration-verification').style.display = 'block';
+                document.getElementById('registration-code')?.focus();
+                this.showNotification('A verification code was sent to the email address you entered.', 'success');
             } else {
                 this.showNotification('Registration failed: ' + result.message, 'danger');
             }
         } catch (error) {
             this.showNotification('Registration error: ' + error.message, 'danger');
+        }
+    }
+
+    async handleRegistrationVerification() {
+        const email = document.getElementById('reg-email').value.trim();
+        const code = (document.getElementById('registration-code').value || '').replace(/\D/g, '');
+        if (code.length !== 6) {
+            this.showNotification('Enter the 6-digit verification code.', 'danger');
+            return;
+        }
+        const btn = document.getElementById('registration-verify-btn');
+        try {
+            btn.disabled = true;
+            btn.textContent = 'Verifying...';
+            const result = await window.AuthService.verifyRegistrationEmail(email, code);
+            if (result.success) {
+                this.showNotification('Email verified. Please log in.', 'success');
+                document.querySelector('.auth-tab[data-auth-tab="login"]')?.click();
+                document.getElementById('login-username').value = email;
+                document.getElementById('login-password').focus();
+            } else {
+                this.showNotification(result.message, 'danger');
+            }
+        } catch (error) {
+            this.showNotification('Verification error: ' + error.message, 'danger');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Verify Email';
         }
     }
 
