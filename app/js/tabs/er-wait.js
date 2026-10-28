@@ -799,15 +799,6 @@ class ERWaitManager {
         document.querySelectorAll('.modal-backdrop').forEach((bd, idx) => {
             if (idx > 0) bd.remove();
         });
-        const premiumBtn = document.getElementById('erw-pw-trends');
-        if (premiumBtn && window.ERW_PAYWALL) {
-            premiumBtn.addEventListener('click', () => {
-                window.ERW_PAYWALL.require('trends', {
-                    title: 'Wait-time trends are a Premium feature',
-                    body: 'Premium adds wait-time trends, drop alerts, ad-free browsing and unlimited favorites.'
-                });
-            });
-        }
     }
 
     /**
@@ -1162,12 +1153,8 @@ class ERWaitManager {
                                     <div class="col-12">
                                         <h6 class="fw-semibold">Performance Trends</h6>
                                         <div class="performance-trends">
-                                            ${window.ERW_PAYWALL && !window.ERW_PAYWALL.isPremium() ? `
-                                                <p class="text-muted mb-2">Wait-time trends are a Premium feature.</p>
-                                                <button class="btn btn-sm btn-primary" id="erw-pw-trends">Unlock with Premium</button>
-                                            ` : `
-                                                <p class="text-muted">Performance trend data available via Django API</p>
-                                            `}
+                                            <!-- Performance trends would be displayed here -->
+                                            <p class="text-muted">Performance trend data available via Django API</p>
                                         </div>
                                     </div>
                                 </div>

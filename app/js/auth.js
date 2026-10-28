@@ -18,6 +18,7 @@
     const AUTH_FLAG = 'isAuthenticated';
     const TOKEN_KEY = 'authToken';
     const ROLE_BY_EMAIL_KEY = 'er-wait-role-by-email';
+    const PAID_KEY = 'er-wait-paid';
 
     function normalizeRole(role) {
         const r = String(role || 'user').toLowerCase().trim();
@@ -79,7 +80,95 @@
     }
 
     function clearSession() {
-        [USER_KEY, LEGACY_USER_KEY, ROLE_KEY, AUTH_FLAG, TOKEN_KEY].forEach((k) => localStorage.removeItem(k));
+        [USER_KEY, LEGACY_USER_KEY, ROLE_KEY, AUTH_FLAG, TOKEN_KEY, PAID_KEY].forEach((k) => localStorage.removeItem(k));
+    }
+
+    function cachePaid(allowed) {
+        try {
+            localStorage.setItem(PAID_KEY, allowed ? 'true' : 'false');
+        } catch (_) { /* ignore */ }
+    }
+
+    function authHeaders() {
+        const headers = {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+        };
+        const session = getSession();
+        const token = (session && session.token) || localStorage.getItem(TOKEN_KEY);
+        if (token) headers.Authorization = `Token ${token}`;
+        return headers;
+    }
+
+    async function apiAuth(path, { method = 'GET', body } = {}) {
+        const response = await fetch(`${API_BASE}${path}`, {
+            method,
+            headers: authHeaders(),
+            body: body ? JSON.stringify(body) : undefined,
+        });
+        let result = {};
+        try {
+            result = await response.json();
+        } catch (_) {
+            result = { status: 'error', message: `HTTP ${response.status}` };
+        }
+        return { ok: response.ok, status: response.status, result };
+    }
+
+    function userBypassesPaywall(user) {
+        if (!user) return false;
+        if (user.is_staff || user.is_superuser) return true;
+        return normalizeRole(user.role) === 'admin';
+    }
+
+    async function getBillingStatus() {
+        const { ok, result } = await apiAuth('/billing/status/');
+        const data = (result && result.data) || {};
+        const allowed = Boolean(ok && result.status === 'success' && data.access_allowed);
+        cachePaid(allowed);
+        return {
+            success: ok && result.status === 'success',
+            access_allowed: allowed,
+            data,
+            message: result.message,
+        };
+    }
+
+    async function startCheckout() {
+        const origin = (global.location && global.location.origin) || 'https://mywaitime.com';
+        const pathPrefix = (global.location && (global.location.pathname || '').startsWith('/app')) ? '/app/' : '/';
+        const base = `${origin}${pathPrefix}index.html`;
+        const { ok, result } = await apiAuth('/billing/checkout/', {
+            method: 'POST',
+            body: {
+                success_url: `${base}?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+                cancel_url: `${base}?checkout=cancel`,
+            },
+        });
+        if (result && result.already_paid) {
+            cachePaid(true);
+            return { success: true, already_paid: true, data: result.data };
+        }
+        if (ok && result.status === 'success' && result.checkout_url) {
+            return { success: true, checkout_url: result.checkout_url, session_id: result.session_id };
+        }
+        return { success: false, message: (result && result.message) || 'Could not start checkout' };
+    }
+
+    async function confirmCheckout(sessionId) {
+        const { ok, result } = await apiAuth('/billing/confirm/', {
+            method: 'POST',
+            body: { session_id: sessionId },
+        });
+        const data = (result && result.data) || {};
+        const allowed = Boolean(ok && result.status === 'success' && data.access_allowed);
+        cachePaid(allowed);
+        return {
+            success: allowed,
+            access_allowed: allowed,
+            data,
+            message: result.message,
+        };
     }
 
     function getSession() {
@@ -154,6 +243,7 @@
             };
         }
 
+        // Prefer enhanced register (assigns doctor group + welcome email).
         let { result } = await apiPost('/auth/enhanced-register/', {
             email,
             password,
@@ -166,6 +256,7 @@
             specialty: data.specialty || undefined,
         });
 
+        // Fall back to role register, then basic register.
         if (result.status !== 'success') {
             const roleReg = await apiPost('/auth/register/role/', {
                 username: username || `user_${Date.now()}`,
@@ -184,8 +275,10 @@
                 username: username || `user_${Date.now()}`,
                 email,
                 password,
+                role,
                 first_name: data.first_name || (fullName ? fullName.split(' ')[0] : ''),
                 last_name: data.last_name || (fullName ? fullName.split(' ').slice(1).join(' ') : ''),
+                phone: data.phone || undefined,
             });
             result = basic.result;
         }
@@ -285,5 +378,11 @@
         confirmPasswordReset,
         rememberRoleForEmail,
         redirectAfterAuth,
+        getBillingStatus,
+        startCheckout,
+        confirmCheckout,
+        userBypassesPaywall,
+        cachePaid,
+        PAID_KEY,
     };
 })(window);

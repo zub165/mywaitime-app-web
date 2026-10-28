@@ -10,7 +10,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <title>ER Wait Time — Web App | Live ER Wait Times & Reviews</title>
-    <meta name="description" content="ER Wait Time web app: live emergency room wait times, patient ratings and reviews, hospital directions and an AI chat assistant. Get the free ER Wait Time app for Android and iPhone.">
+    <meta name="description" content="ER Wait Time web app: live emergency room wait times, hospital directions and an AI chat assistant. Subscribe to unlock the full web app.">
     <link rel="canonical" href="https://mywaitime.com/app/">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="ER Wait Time">
@@ -24,7 +24,6 @@
     <link rel="manifest" href="/manifest.json">
     <meta name="apple-mobile-web-app-title" content="ER Wait Time">
     <link rel="stylesheet" href="/install.css">
-    <link rel="stylesheet" href="/paywall.css">
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -36,14 +35,11 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <!-- Custom Styles -->
-    <link rel="stylesheet" href="/app/css/app.css?v=20261016l">
-    <link rel="stylesheet" href="/app/css/components.css?v=20261016l">
+    <link rel="stylesheet" href="css/app.css?v=20261028a">
+    <link rel="stylesheet" href="css/components.css?v=20261028a">
     
     <!-- Leaflet CSS for Maps -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script>
-        window.ERW_ANALYTICS = { ga4Id: '', endpoint: '' };
-    </script>
 </head>
 <body>
     <!-- Navigation Header -->
@@ -99,9 +95,6 @@
                     <a href="https://play.google.com/store/apps/details?id=com.easytechnologiez.ERTime" id="get-the-app" data-store-content="navbar" data-store-placement="webapp_navbar" class="btn btn-light btn-sm me-3" target="_blank" rel="noopener noreferrer" style="font-weight: 600;">
                         <i class="fas fa-download me-1"></i>Get the App
                     </a>
-                    <button type="button" id="erw-premium-nav" class="btn btn-warning btn-sm me-3" style="font-weight: 600;">
-                        <i class="fas fa-crown me-1"></i>Premium
-                    </button>
                     <div class="me-3 position-relative">
                         <span class="badge bg-success me-2" style="cursor: pointer;" onclick="app.toggleStatusDashboard()">
                             <i class="fas fa-circle me-1" style="font-size: 0.5rem;"></i>Backend Connected
@@ -157,22 +150,20 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
     <!-- Application Scripts -->
-    <script src="/app/js/auth.js?v=20261024a"></script>
-    <script src="/app/js/paywall.js?v=20261021a"></script>
-    <script src="/app/js/app.js?v=20261024a"></script>
-    <script src="/app/js/router.js?v=20261016l"></script>
-    <script src="/app/js/api.js?v=20261016l"></script>
-    <script src="/app/js/utils.js?v=20261016l"></script>
-    <script src="/app/js/api-client.js?v=20261016l"></script>
+    <script src="js/auth.js?v=20261028a"></script>
+    <script src="js/app.js?v=20261028a"></script>
+    <script src="js/router.js?v=20261028a"></script>
+    <script src="js/api.js?v=20261028a"></script>
+    <script src="js/utils.js?v=20261028a"></script>
+    <script src="js/api-client.js?v=20261028a"></script>
     
     <!-- Tab-specific Scripts -->
-    <script src="/app/js/tabs/er-wait.js?v=20261016l"></script>
-    <script src="/app/js/tabs/chat.js?v=20261016l"></script>
-    <script src="/app/js/tabs/hospital.js?v=20261016l"></script>
-    <script src="/app/js/tabs/registration.js?v=20261016l"></script>
-    <script src="/app/js/tabs/records.js?v=20261016l"></script>
-    <script src="/app/js/tabs/directions.js?v=20261016l"></script>
-
+    <script src="js/tabs/er-wait.js?v=20261028a"></script>
+    <script src="js/tabs/chat.js?v=20261028a"></script>
+    <script src="js/tabs/hospital.js?v=20261028a"></script>
+    <script src="js/tabs/registration.js?v=20261028a"></script>
+    <script src="js/tabs/records.js?v=20261028a"></script>
+    <script src="js/tabs/directions.js?v=20261028a"></script>
     <script>
         (function () {
             var btn = document.getElementById('get-the-app');
@@ -186,14 +177,5 @@
     </script>
     <script src="/analytics.js"></script>
     <script src="/app-install.js"></script>
-    <script>
-        (function () {
-            var btn = document.getElementById('erw-premium-nav');
-            if (!btn || !window.ERW_PAYWALL) return;
-            btn.addEventListener('click', function () {
-                window.ERW_PAYWALL.open();
-            });
-        })();
-    </script>
 </body>
 </html>

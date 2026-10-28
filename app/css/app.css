@@ -1387,3 +1387,90 @@ iframe {
         white-space: nowrap;
     }
 }
+
+/* Hide app chrome until backend confirms a paid (or staff) session */
+body:not(.app-unlocked) > .navbar,
+body:not(.app-unlocked) > .main-content {
+    display: none !important;
+}
+
+/* Paywall overlay — blocks app until Stripe subscription is active */
+#paywall-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.25rem;
+    overflow-y: auto;
+}
+.paywall-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 2rem 1.5rem;
+    max-width: 420px;
+    width: 100%;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.18);
+    text-align: center;
+}
+.paywall-icon {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 1rem;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+}
+.paywall-card h2 {
+    margin: 0 0 0.5rem;
+    color: #1e293b;
+}
+.paywall-lead {
+    color: #64748b;
+    font-size: 0.95rem;
+    margin-bottom: 1rem;
+}
+.paywall-price {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #4f46e5;
+    margin-bottom: 1rem;
+}
+.paywall-price small {
+    font-size: 0.95rem;
+    color: #64748b;
+    font-weight: 500;
+}
+.paywall-features {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1.25rem;
+    text-align: left;
+}
+.paywall-features li {
+    padding: 0.35rem 0;
+    color: #334155;
+}
+.paywall-features i {
+    color: #16a34a;
+    margin-right: 0.5rem;
+}
+.paywall-status {
+    min-height: 1.25rem;
+    font-size: 0.9rem;
+    color: #b91c1c;
+}
+.paywall-note, .paywall-links {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin-top: 0.75rem;
+}
+.paywall-links a {
+    color: #667eea;
+}

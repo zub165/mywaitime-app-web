@@ -8,6 +8,7 @@ class ERWaitTimeApp {
         this.currentTab = 'er-wait';
         this.isLoading = false;
         this.user = null;
+        this.paidAccess = false;
         const host = (typeof location !== 'undefined' && location.hostname) || '';
         const productionApi = host.includes('mywaitime.com') || host.includes('mywaittime.com') || host.includes('github.io');
         this.config = {
@@ -45,6 +46,14 @@ class ERWaitTimeApp {
                 return;
             }
 
+            const paid = await this.ensurePaidAccess();
+            this.paidAccess = paid;
+            if (!paid) {
+                this.hideLoading();
+                return;
+            }
+            document.body.classList.add('app-unlocked');
+
             // Honor #tab hash (e.g. #hospital) when present
             const hashTab = (location.hash || '').replace(/^#/, '').trim();
             if (hashTab && ['er-wait', 'chat', 'hospital', 'registration', 'records', 'directions'].includes(hashTab)) {
@@ -73,7 +82,13 @@ class ERWaitTimeApp {
         } catch (error) {
             console.error('Failed to initialize application:', error);
             this.hideLoading();
-            this.revealMainApp();
+            if (this.user && !this.paidAccess) {
+                await this.showPaywall({}, false, 'Could not verify subscription. Please try again.');
+                return;
+            }
+            if (this.paidAccess) {
+                this.revealMainApp();
+            }
             this.showNotification('Failed to load application. Please refresh the page.', 'danger');
         }
     }
@@ -84,6 +99,9 @@ class ERWaitTimeApp {
     revealMainApp() {
         const authScreen = document.getElementById('auth-screen');
         if (authScreen) authScreen.remove();
+        const paywall = document.getElementById('paywall-screen');
+        if (paywall) paywall.remove();
+        document.body.classList.add('app-unlocked');
 
         const navigation = document.querySelector('.navbar') || document.querySelector('.navigation');
         if (navigation) navigation.style.display = '';
@@ -236,6 +254,7 @@ class ERWaitTimeApp {
 
         // Handle browser back/forward
         window.addEventListener('popstate', (e) => {
+            if (!this.paidAccess || document.getElementById('paywall-screen')) return;
             if (e.state && e.state.tab) {
                 this.loadTab(e.state.tab, false);
             }
@@ -260,6 +279,7 @@ class ERWaitTimeApp {
      * Navigate to a specific tab
      */
     async navigateToTab(tabName) {
+        if (!this.paidAccess || document.getElementById('paywall-screen')) return;
         // Never hard-block navigation on a previous stuck load
         try {
             this.updateNavigationState(tabName);
@@ -276,7 +296,7 @@ class ERWaitTimeApp {
      * Resolve path under /app/ on GitHub Pages (and / locally)
      */
     appPath(relativePath) {
-        const path = relativePath.replace(/^\//, '');
+        const path = String(relativePath || '').replace(/^\//, '');
         // GitHub Pages serves the app under /app/
         if (location.pathname === '/app' || location.pathname.startsWith('/app/')) {
             return `/app/${path}`;
@@ -288,17 +308,8 @@ class ERWaitTimeApp {
      * Load tab content
      */
     async loadTab(tabName, updateHistory = true) {
+        if (!this.paidAccess || document.getElementById('paywall-screen')) return;
         if (this.currentTab === tabName && !updateHistory) return;
-
-        if (window.ERW_PAYWALL && window.ERW_PAYWALL.isGatedTab(tabName)) {
-            const allowed = window.ERW_PAYWALL.require(tabName, {
-                onUnlock: () => this.loadTab(tabName, true)
-            });
-            if (!allowed) {
-                this.renderLockedTab(tabName);
-                return;
-            }
-        }
         
         console.log(`Loading tab: ${tabName}`);
         this.currentTab = tabName;
@@ -340,30 +351,6 @@ class ERWaitTimeApp {
             this.showNotification(`Failed to load ${tabName} content`, 'danger');
         } finally {
             this.hideLoading();
-        }
-    }
-
-    /**
-     * Placeholder shown when a Premium-gated tab is opened without Premium
-     */
-    renderLockedTab(tabName) {
-        const container = document.getElementById('tab-content');
-        if (!container) return;
-        const label = tabName === 'records' ? 'Medical Records' : tabName;
-        container.innerHTML = `
-            <div class="erw-pw-locked">
-                <div style="font-size:2rem;">&#128274;</div>
-                <h3>${label} is a Premium feature</h3>
-                <p>Subscribe in the ER Wait Time app to unlock it here.</p>
-                <button class="btn btn-primary" id="erw-pw-open">See Premium</button>
-            </div>`;
-        const btn = document.getElementById('erw-pw-open');
-        if (btn && window.ERW_PAYWALL) {
-            btn.addEventListener('click', () => {
-                window.ERW_PAYWALL.require(tabName, {
-                    onUnlock: () => this.loadTab(tabName, true)
-                });
-            });
         }
     }
 
@@ -563,6 +550,120 @@ class ERWaitTimeApp {
 
 
 
+    hideAppChrome() {
+        const navigation = document.querySelector('.navbar') || document.querySelector('.navigation');
+        if (navigation) navigation.style.display = 'none';
+        const mainTabContent = document.getElementById('tab-content');
+        if (mainTabContent) mainTabContent.style.display = 'none';
+        const main = document.querySelector('.main-content');
+        if (main) main.style.display = 'none';
+    }
+
+    /**
+     * Backend is source of truth. Local paid flag is only a cache.
+     */
+    async ensurePaidAccess() {
+        if (!this.user) return false;
+
+        const params = new URLSearchParams(location.search || '');
+        const sessionId = params.get('session_id');
+        if (params.get('checkout') === 'success' && sessionId && window.AuthService) {
+            try {
+                const confirmed = await window.AuthService.confirmCheckout(sessionId);
+                if (confirmed.access_allowed) {
+                    history.replaceState({}, '', location.pathname + (location.hash || ''));
+                    this.showNotification('Subscription active. Welcome to ER Wait Time.', 'success');
+                    return true;
+                }
+            } catch (err) {
+                console.warn('Checkout confirm failed:', err);
+            }
+        }
+
+        try {
+            const billing = window.AuthService
+                ? await window.AuthService.getBillingStatus()
+                : { access_allowed: false };
+            if (billing.success && billing.access_allowed) return true;
+            await this.showPaywall(
+                billing.data || {},
+                params.get('checkout') === 'cancel',
+                billing.success ? '' : (billing.message || 'Could not verify subscription.')
+            );
+            return false;
+        } catch (err) {
+            console.error('Billing status failed:', err);
+            await this.showPaywall({}, false, 'Could not verify subscription. Please try again.');
+            return false;
+        }
+    }
+
+    async showPaywall(billingData = {}, canceled = false, errorMessage = '') {
+        this.paidAccess = false;
+        document.body.classList.remove('app-unlocked');
+        this.hideAppChrome();
+        document.getElementById('auth-screen')?.remove();
+        document.getElementById('paywall-screen')?.remove();
+
+        let bodyHtml = '';
+        try {
+            const resp = await fetch(this.appPath('tabs/paywall.html'), { cache: 'no-cache' });
+            if (resp.ok) bodyHtml = await resp.text();
+        } catch (_) { /* fall through */ }
+        if (!bodyHtml) {
+            bodyHtml = `
+                <div class="paywall-card">
+                    <h2>Subscribe to continue</h2>
+                    <p>ER Wait Time requires an active subscription.</p>
+                    <button type="button" class="btn-primary" id="paywall-subscribe-btn">Continue to secure checkout</button>
+                    <p><a href="#" id="paywall-logout">Use a different account</a></p>
+                    <p id="paywall-status" class="paywall-status"></p>
+                </div>`;
+        }
+
+        const screen = document.createElement('div');
+        screen.id = 'paywall-screen';
+        screen.innerHTML = bodyHtml;
+        document.body.appendChild(screen);
+
+        const amountEl = document.getElementById('paywall-amount');
+        if (amountEl && billingData.amount_display) amountEl.textContent = billingData.amount_display;
+        const statusEl = document.getElementById('paywall-status');
+        if (statusEl) {
+            statusEl.textContent = errorMessage
+                || (canceled ? 'Checkout canceled. Subscribe to unlock the app.' : '');
+        }
+
+        const btn = document.getElementById('paywall-subscribe-btn');
+        if (btn) {
+            btn.addEventListener('click', async () => {
+                btn.disabled = true;
+                btn.textContent = 'Opening checkout…';
+                try {
+                    const result = await window.AuthService.startCheckout();
+                    if (result.already_paid) {
+                        location.reload();
+                        return;
+                    }
+                    if (result.success && result.checkout_url) {
+                        window.location.href = result.checkout_url;
+                        return;
+                    }
+                    if (statusEl) statusEl.textContent = result.message || 'Could not start checkout.';
+                } catch (err) {
+                    if (statusEl) statusEl.textContent = err.message || 'Checkout failed.';
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = 'Continue to secure checkout';
+                }
+            });
+        }
+        document.getElementById('paywall-logout')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.logout();
+        });
+    }
+
     /**
      * Check user session
      */
@@ -611,7 +712,10 @@ class ERWaitTimeApp {
      * Logout user
      */
     logout() {
+        this.paidAccess = false;
+        document.body.classList.remove('app-unlocked');
         this.clearUserSession();
+        document.getElementById('paywall-screen')?.remove();
         
         // Remove auth screen if exists
         const authScreen = document.getElementById('auth-screen');
@@ -1238,6 +1342,12 @@ class ERWaitTimeApp {
 
             if (result.success) {
                 this.setCurrentUser(result.user);
+                const paid = await this.ensurePaidAccess();
+                this.paidAccess = paid;
+                if (!paid) {
+                    this.hideLoading();
+                    return;
+                }
                 this.revealMainApp();
 
                 await this.initializeComponents();
